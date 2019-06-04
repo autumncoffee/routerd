@@ -1,0 +1,6 @@
+[submodule "ac/ac-common"]
+	path = ac/ac-common
+	url = https://github.com/autumncoffee/cxx-common.git
+[submodule "ac/ac-library"]
+	path = ac/ac-library
+	url = https://github.com/autumncoffee/cxx-library.git
