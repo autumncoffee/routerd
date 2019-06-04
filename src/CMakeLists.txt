@@ -25,22 +25,15 @@ set(CMAKE_CXX_FLAGS "${AC_COMMON_CXX_FLAGS} ${AC_TCMALLOC_CXX_FLAGS} ${AC_DEBUG_
 file(GLOB AC_ROUTERD_SOURCES *.cpp)
 
 include_directories("../ac")
-include_directories("../contrib")
 include_directories(".")
 
-add_subdirectory("handlers")
-
-add_subdirectory("../ac/ac-common" ac_common_bindir)
-add_subdirectory("../ac/ac-library/http" ac_library_http_bindir)
+add_subdirectory("routerd_lib")
 
 add_executable(routerd ${AC_ROUTERD_SOURCES})
 
 target_link_libraries(
     routerd
-    routerd_handlers
-    ac_common
-    ac_library_http
-    ac_library_http_router
+    routerd_lib
     ${AC_TCMALLOC_LIBS}
 )
 

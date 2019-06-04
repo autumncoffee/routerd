@@ -3,7 +3,7 @@
 #include <ac-common/str.hpp>
 #include <utility>
 #include <random>
-#include "utils.hpp"
+#include <routerd_lib/utils.hpp>
 
 namespace NAC {
     void TRouterDProxyHandler::Handle(
@@ -19,7 +19,7 @@ namespace NAC {
         if (hosts.size() > 1) {
             std::random_device rd;
             std::mt19937 g(rd());
-            std::uniform_int_distribution<size_t> dis(0, hosts.size());
+            std::uniform_int_distribution<size_t> dis(0, hosts.size() - 1);
 
             return hosts.at(dis(g));
         }

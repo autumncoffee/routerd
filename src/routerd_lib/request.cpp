@@ -66,6 +66,8 @@ namespace NAC {
             OutgoingRequest_.Header("X-AC-RouterD-Method", Method());
             OutgoingRequest_.Header("X-AC-RouterD", DefaultChunkName());
             OutgoingRequest_.Header("Content-Type", std::string("multipart/form-data; boundary=") + Boundary());
+
+            PrepareOutgoingRequest(OutgoingRequest_);
         }
 
         TBlobSequence out;

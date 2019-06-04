@@ -19,6 +19,10 @@ namespace NAC {
             return Boundary_;
         }
 
+    protected:
+        virtual void PrepareOutgoingRequest(NHTTP::TResponse&) {
+        }
+
     private:
         TBlobSequence& Data();
         void PushPartPreamble(const std::string& partName, size_t size);
