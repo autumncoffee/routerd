@@ -71,10 +71,12 @@ namespace NAC {
         }
 
         TBlobSequence out;
+        TBlob end;
+        end << "\r\n--" << Boundary() << "--\r\n";
 
         {
             auto preamble = OutgoingRequest_.Preamble();
-            size_t contentLength = 0;
+            size_t contentLength = end.Size();
 
             for (const auto& node : Data()) {
                 contentLength += node.Len;
@@ -90,7 +92,7 @@ namespace NAC {
         }
 
         out.Concat(Data());
-        out.Concat(std::move(TBlob() << "\r\n--" << Boundary() << "--\r\n"));
+        out.Concat(std::move(end));
 
         return out;
     }
