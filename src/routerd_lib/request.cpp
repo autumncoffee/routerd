@@ -90,7 +90,7 @@ namespace NAC {
         }
 
         out.Concat(Data());
-        out.Concat(TBlob() << "\r\n--" << Boundary() << "--\r\n");
+        out.Concat(std::move(TBlob() << "\r\n--" << Boundary() << "--\r\n"));
 
         return out;
     }
