@@ -123,20 +123,12 @@ namespace NAC {
                 while (!tree.empty()) {
                     std::vector<std::string> noDeps;
 
-                    for (auto&& it1 : tree) {
-                        if (!it1.second.empty()) {
+                    for (auto&& it : tree) {
+                        if (!it.second.empty()) {
                             continue;
                         }
 
-                        noDeps.push_back(it1.first);
-
-                        if (reverseTree.count(it1.first) > 0) {
-                            for (const auto& it2 : reverseTree.at(it1.first)) {
-                                tree.at(it2).erase(it1.first);
-                            }
-
-                            reverseTree.erase(it1.first);
-                        }
+                        noDeps.push_back(it.first);
                     }
 
                     if (noDeps.empty()) {
@@ -144,8 +136,16 @@ namespace NAC {
                         return 1;
                     }
 
-                    for (const auto& it : noDeps) {
-                        tree.erase(it);
+                    for (const auto& it1 : noDeps) {
+                        if (reverseTree.count(it1) > 0) {
+                            for (const auto& it2 : reverseTree.at(it1)) {
+                                tree.at(it2).erase(it1);
+                            }
+
+                            reverseTree.erase(it1);
+                        }
+
+                        tree.erase(it1);
                     }
 
                     order.emplace_back(std::move(noDeps));
