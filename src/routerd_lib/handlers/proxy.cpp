@@ -4,6 +4,7 @@
 #include <utility>
 #include <random>
 #include <routerd_lib/utils.hpp>
+#include <ac-library/http/server/await_client.hpp>
 
 namespace NAC {
     void TRouterDProxyHandler::Handle(
@@ -35,23 +36,23 @@ namespace NAC {
         for (const auto& service : Order.at(request->GetStage())) {
             const auto& host = GetHost(service);
             auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, service](
-                std::shared_ptr<NHTTPLikeParser::TParsedData> response,
-                std::shared_ptr<NHTTPLikeServer::TClient> client
+                std::shared_ptr<NHTTP::TIncomingResponse> response,
+                std::shared_ptr<NHTTPServer::TClientBase> client
             ) {
                 client->Drop(); // TODO
                 request->NewReply();
 
                 if (service == std::string("output")) { // TODO
                     NHTTP::TResponse out;
-                    out.FirstLine(std::string(response->FirstLine, response->FirstLineSize) + "\r\n");
-                    CopyHeaders(response->Headers, out);
-                    out.Wrap(response->BodySize, response->Body);
+                    out.FirstLine(response->FirstLine() + "\r\n");
+                    CopyHeaders(response->Headers(), out);
+                    out.Wrap(response->ContentLength(), (char*)response->Content());
                     out.Memorize(response);
 
                     request->Send(out);
                 }
 
-                auto s = TBlobSequence::Construct(response->BodySize, response->Body);
+                auto s = TBlobSequence::Construct(response->ContentLength(), response->Content());
                 s.Memorize(response);
                 request->PushData(service, std::move(s));
 
