@@ -13,7 +13,7 @@ namespace {
     nlohmann::json ParseConfig(const std::string& path) {
         NAC::TFile configFile(path);
 
-        if (!configFile.IsOK()) {
+        if (!configFile) {
             std::cerr << "Failed to open " << path << std::endl;
             return nullptr;
         }
