@@ -3,20 +3,23 @@
 #include <ac-library/http/request.hpp>
 #include <ac-common/string_sequence.hpp>
 #include <utility>
-#include <ac-library/http/utils/multipart.hpp>
+#include <json.hh>
 
 namespace NAC {
     class TRouterDRequest : public NHTTP::TRequest {
     public:
-        template<typename... TArgs>
-        TRouterDRequest(TArgs&&... args)
-            : NHTTP::TRequest(std::forward<TArgs>(args)...)
-            , Boundary_(NHTTPUtils::Boundary())
-        {
-        }
+        struct TArgs {
+            bool AllowNestedRequests = false;
 
-        const std::string& Boundary() const {
-            return Boundary_;
+            static TArgs FromConfig(const nlohmann::json&);
+        };
+
+    public:
+        template<typename... TArgs_>
+        TRouterDRequest(const TArgs& args, TArgs_&&... args_)
+            : NHTTP::TRequest(std::forward<TArgs_>(args_)...)
+            , Args(args)
+        {
         }
 
     protected:
@@ -24,17 +27,13 @@ namespace NAC {
         }
 
     private:
-        TBlobSequence& Data();
-        void PushPartPreamble(const std::string& partName, size_t size);
-        void PushDataImpl(const std::string& partName, TBlobSequence&& input);
+        NHTTP::TResponse& Out();
 
     public:
-        template<typename... TArgs>
-        void PushData(const std::string& partName, TArgs&&... args) {
-            PushDataImpl(partName, TBlobSequence::Construct(std::forward<TArgs>(args)...));
-        }
+        NHTTP::TResponse PreparePart(const std::string& partName) const;
+        void AddPart(NHTTP::TResponse&& part);
 
-        const std::string& DefaultChunkName() const {
+        virtual const std::string& DefaultChunkName() const {
             static const std::string defaultChunkName("default");
 
             return defaultChunkName;
@@ -60,9 +59,7 @@ namespace NAC {
         }
 
     private:
-        std::string Boundary_;
-        bool DataInited = false;
-        TBlobSequence Data_;
+        TArgs Args;
         bool OutgoingRequestInited = false;
         NHTTP::TResponse OutgoingRequest_;
         size_t Stage = 0;

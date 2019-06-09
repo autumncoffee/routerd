@@ -46,15 +46,18 @@ namespace NAC {
                     NHTTP::TResponse out;
                     out.FirstLine(response->FirstLine() + "\r\n");
                     CopyHeaders(response->Headers(), out);
-                    out.Wrap(response->ContentLength(), (char*)response->Content());
+                    out.Wrap(response->ContentLength(), response->Content());
                     out.Memorize(response);
 
                     request->Send(out);
                 }
 
-                auto s = TBlobSequence::Construct(response->ContentLength(), response->Content());
-                s.Memorize(response);
-                request->PushData(service, std::move(s));
+                {
+                    auto part = request->PreparePart(service);
+                    part.Wrap(response->ContentLength(), response->Content());
+                    part.Memorize(response);
+                    request->AddPart(std::move(part));
+                }
 
                 if (request->ReplyCount() >= Order.at(request->GetStage()).size()) {
                     OnStageDone(request);

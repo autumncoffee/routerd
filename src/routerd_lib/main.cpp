@@ -3,7 +3,6 @@
 #include <ac-library/http/server/server.hpp>
 #include <ac-library/http/router/router.hpp>
 #include <stdlib.h>
-#include <json.hh>
 #include <iostream>
 #include <ac-common/file.hpp>
 #include <unordered_set>
@@ -24,18 +23,24 @@ namespace {
 }
 
 namespace NAC {
+    TRouterDRequestFactoryFactory DefaultRouterDRequestFactoryFactory() {
+        return [](const nlohmann::json& config) {
+            return [args = TRouterDRequest::TArgs::FromConfig(config)](
+                std::shared_ptr<NHTTPLikeParser::TParsedData> data,
+                const NHTTPServer::TResponder& responder
+            ) {
+                return (NHTTP::TRequest*)(new TRouterDRequest(args, data, responder));
+            };
+        };
+    }
+
     int RouterDMain(const std::string& configPath) {
-        return RouterDMain(configPath, [](
-            std::shared_ptr<NHTTPLikeParser::TParsedData> data,
-            const NHTTPServer::TResponder& responder
-        ) {
-            return (NHTTP::TRequest*)(new TRouterDRequest(data, responder));
-        });
+        return RouterDMain(configPath, DefaultRouterDRequestFactoryFactory());
     }
 
     int RouterDMain(
         const std::string& configPath,
-        NHTTPServer::TClient::TArgs::TRequestFactory&& requestFactory
+        TRouterDRequestFactoryFactory&& requestFactoryFactory
     ) {
         auto&& config = ParseConfig(configPath);
         const std::string bind4((config.count("bind4") > 0) ? config["bind4"].get<std::string>() : "");
@@ -164,6 +169,7 @@ namespace NAC {
             router.Add(route["r"].get<std::string>(), graphs.at(route["g"].get<std::string>()));
         }
 
+        auto&& requestFactory = requestFactoryFactory(config);
         NHTTPServer::TServer::TArgs args;
 
         args.BindIP4 = (bind4.empty() ? nullptr : bind4.c_str());

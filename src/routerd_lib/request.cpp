@@ -1,57 +1,60 @@
 #include "request.hpp"
 #include <ac-common/str.hpp>
 #include "utils.hpp"
+#include <string.h>
 
 namespace NAC {
-    void TRouterDRequest::PushPartPreamble(const std::string& partName, size_t size) {
-        TBlob preamble;
-        preamble.Append(std::string(DataInited ? "\r\n" : "") + "--" + Boundary() + "\r\n");
-        preamble.Append("Content-Disposition: form-data; name=\"" + partName + "\"; filename=\"" + partName + "\"\r\n");
-        preamble.Append("Content-Type: application/octet-stream\r\n");
-        preamble.Append("Content-Length: " + std::to_string(size) + "\r\n\r\n");
+    TRouterDRequest::TArgs TRouterDRequest::TArgs::FromConfig(const nlohmann::json& config) {
+        TArgs out;
 
-        Data_.Concat(std::move(preamble));
-    }
-
-    TBlobSequence& TRouterDRequest::Data() {
-        if (DataInited) {
-            return Data_;
+        if (config.count("allow_nested_requests") > 0) {
+            out.AllowNestedRequests = config["allow_nested_requests"].get<bool>();
         }
 
-        PushPartPreamble(DefaultChunkName(), ContentLength());
-
-        DataInited = true;
-
-        if (ContentLength() > 0) {
-            Data_.Concat(ContentLength(), Content());
-        }
-
-        return Data_;
+        return out;
     }
 
-    void TRouterDRequest::PushDataImpl(const std::string& partName, TBlobSequence&& input) {
-        auto&& data = Data();
-        size_t contentLength = 0;
+    NHTTP::TResponse TRouterDRequest::PreparePart(const std::string& partName) const {
+        NHTTP::TResponse out;
+        out.Header("Content-Disposition", "form-data; name=\"" + partName + "\"; filename=\"" + partName + "\"");
+        out.Header("Content-Type", "application/octet-stream");
 
-        for (const auto& node : input) {
-            contentLength += node.Len;
-        }
-
-        PushPartPreamble(partName, contentLength);
-        data.Concat(std::move(input));
+        return out;
     }
 
-    TBlobSequence TRouterDRequest::OutgoingRequest() {
-        if (!OutgoingRequestInited) {
-            OutgoingRequestInited = true;
+    void TRouterDRequest::AddPart(NHTTP::TResponse&& part) {
+        Out().AddPart(std::move(part));
+    }
 
-            const std::string firstLine(FirstLine());
-            const size_t pathStart(Method().size() + 1);
-            const size_t pathSize(firstLine.size() - pathStart - (Protocol().size() + 1));
+    NHTTP::TResponse& TRouterDRequest::Out() {
+        if (OutgoingRequestInited) {
+            return OutgoingRequest_;
+        }
 
-            OutgoingRequest_.FirstLine("POST " + std::string(firstLine.data() + pathStart, pathSize) + " " + Protocol() + "\r\n");
+        OutgoingRequestInited = true;
 
-            for (const auto& header : Headers()) {
+        const std::string firstLine(FirstLine());
+        const size_t pathStart(Method().size() + 1);
+        const size_t pathSize(firstLine.size() - pathStart - (Protocol().size() + 1));
+
+        OutgoingRequest_.FirstLine("POST " + std::string(firstLine.data() + pathStart, pathSize) + " " + Protocol() + "\r\n");
+
+        const bool isNested(Args.AllowNestedRequests && !HeaderValue("x-ac-routerd").empty() && !Parts().empty());
+
+        for (const auto& header : Headers()) {
+            if (isNested) {
+                if (
+                    (header.first == std::string("content-type"))
+                    || (header.first == std::string("content-length"))
+                ) {
+                    continue;
+                }
+
+            } else {
+                if (strncmp(header.first.data(), "x-ac-routerd", 12) == 0) {
+                    continue;
+                }
+
                 if (RemapHeader(header, "content-length", "X-AC-RouterD-Content-Length", OutgoingRequest_)) {
                     continue;
                 }
@@ -59,41 +62,46 @@ namespace NAC {
                 if (RemapHeader(header, "content-type", "X-AC-RouterD-CType", OutgoingRequest_)) {
                     continue;
                 }
-
-                AddHeader(header, OutgoingRequest_);
             }
 
+            AddHeader(header, OutgoingRequest_);
+        }
+
+        if (!isNested) {
             OutgoingRequest_.Header("X-AC-RouterD-Method", Method());
             OutgoingRequest_.Header("X-AC-RouterD", DefaultChunkName());
-            OutgoingRequest_.Header("Content-Type", std::string("multipart/form-data; boundary=") + Boundary());
-
-            PrepareOutgoingRequest(OutgoingRequest_);
         }
 
-        TBlobSequence out;
-        TBlob end;
-        end << "\r\n--" << Boundary() << "--\r\n";
+        OutgoingRequest_.Header("Content-Type", "multipart/form-data");
 
-        {
-            auto preamble = OutgoingRequest_.Preamble();
-            size_t contentLength = end.Size();
+        PrepareOutgoingRequest(OutgoingRequest_);
 
-            for (const auto& node : Data()) {
-                contentLength += node.Len;
+        if (isNested) {
+            for (const auto& in : Parts()) {
+                NHTTP::TResponse out;
+                CopyHeaders(in.Headers(), out);
+
+                if (in.ContentLength() > 0) {
+                    out.Wrap(in.ContentLength(), in.Content());
+                }
+
+                AddPart(std::move(out));
             }
 
-            preamble
-                << "Content-Length: "
-                << std::to_string(contentLength)
-                << "\r\n\r\n"
-            ;
+        } else {
+            auto part = PreparePart(DefaultChunkName());
 
-            out.Concat(std::move(preamble));
+            if (ContentLength() > 0) {
+                part.Wrap(ContentLength(), Content());
+            }
+
+            AddPart(std::move(part));
         }
 
-        out.Concat(Data());
-        out.Concat(std::move(end));
+        return OutgoingRequest_;
+    }
 
-        return out;
+    TBlobSequence TRouterDRequest::OutgoingRequest() {
+        return (TBlobSequence)Out();
     }
 }

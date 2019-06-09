@@ -25,6 +25,7 @@ set(CMAKE_CXX_FLAGS "${AC_COMMON_CXX_FLAGS} ${AC_TCMALLOC_CXX_FLAGS} ${AC_DEBUG_
 file(GLOB AC_ROUTERD_SOURCES *.cpp)
 
 include_directories("../ac")
+include_directories("../contrib")
 include_directories(".")
 
 add_subdirectory("routerd_lib")
