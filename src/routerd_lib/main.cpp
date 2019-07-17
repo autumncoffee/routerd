@@ -79,9 +79,9 @@ namespace NAC {
         std::unordered_map<std::string, std::shared_ptr<NHTTPHandler::THandler>> graphs;
 
         for (const auto& graph : config["graphs"].get<std::unordered_map<std::string, nlohmann::json>>()) {
-            std::unordered_map<std::string, TService*> services;
             const auto& data = graph.second;
-            std::vector<TService> servicesVector;
+            TRouterDGraph::TTree tree;
+            TRouterDGraph compiledGraph;
 
             for (const auto& service_ : data["services"].get<std::vector<nlohmann::json>>()) {
                 TService service;
@@ -106,25 +106,21 @@ namespace NAC {
                 }
 
                 if (hosts.count(service.HostsFrom) == 0) {
-                    std::cerr << graph.first << ": unknown service: " << service.HostsFrom << std::endl;
+                    std::cerr << graph.first << ": unknown hosts group: " << service.HostsFrom << std::endl;
                     return 1;
                 }
 
-                servicesVector.push_back(std::move(service));
+                if (compiledGraph.Services.count(service.Name) > 0) {
+                    std::cerr << graph.first << ": service already present: " << service.Name << std::endl;
+                    return 1;
+                }
 
-                auto&& service__ = servicesVector.back();
-                services.emplace(service__.Name, &service__);
+                tree.emplace(service.Name, decltype(tree)::mapped_type());
+                compiledGraph.Services.emplace(service.Name, std::move(service));
             }
 
-            std::vector<std::vector<TService>> order;
-
             if (data.count("deps") > 0) {
-                std::unordered_map<std::string, std::unordered_set<std::string>> tree;
-                std::unordered_map<std::string, std::unordered_set<std::string>> reverseTree;
-
-                for (const auto& service : servicesVector) {
-                    tree.emplace(service.Name, decltype(tree)::mapped_type());
-                }
+                TRouterDGraph::TTree reverseTree;
 
                 for (const auto& dep : data["deps"].get<std::vector<nlohmann::json>>()) {
                     const auto& a = dep["a"].get<std::string>();
@@ -135,12 +131,12 @@ namespace NAC {
                         return 1;
                     }
 
-                    if (services.count(a) == 0) {
+                    if (compiledGraph.Services.count(a) == 0) {
                         std::cerr << graph.first << ": unknown service in dependency: " << a << std::endl;
                         return 1;
                     }
 
-                    if (services.count(b) == 0) {
+                    if (compiledGraph.Services.count(b) == 0) {
                         std::cerr << graph.first << ": unknown service in dependency: " << b << std::endl;
                         return 1;
                     }
@@ -148,6 +144,9 @@ namespace NAC {
                     tree[a].insert(b);
                     reverseTree[b].insert(a);
                 }
+
+                compiledGraph.Tree = tree;
+                compiledGraph.ReverseTree = reverseTree;
 
                 while (!tree.empty()) {
                     std::vector<std::string> noDeps;
@@ -165,8 +164,6 @@ namespace NAC {
                         return 1;
                     }
 
-                    std::vector<TService> noDeps_;
-
                     for (const auto& it1 : noDeps) {
                         if (reverseTree.count(it1) > 0) {
                             for (const auto& it2 : reverseTree.at(it1)) {
@@ -177,17 +174,14 @@ namespace NAC {
                         }
 
                         tree.erase(it1);
-                        noDeps_.push_back(*services.at(it1));
                     }
-
-                    order.emplace_back(std::move(noDeps_));
                 }
 
             } else {
-                order.push_back(servicesVector);
+                compiledGraph.Tree = tree;
             }
 
-            graphs.emplace(graph.first, std::make_shared<TRouterDProxyHandler>(hosts, std::move(order)));
+            graphs.emplace(graph.first, std::make_shared<TRouterDProxyHandler>(hosts, std::move(compiledGraph)));
         }
 
         NHTTPRouter::TRouter router;

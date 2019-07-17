@@ -1,31 +1,21 @@
 #pragma once
 
 #include <ac-library/http/handler/handler.hpp>
+#include <routerd_lib/structs.hpp>
 #include <routerd_lib/request.hpp>
 #include <utility>
 #include <unordered_map>
 
 namespace NAC {
-    struct TServiceHost {
-        std::string Addr;
-        unsigned short Port = 0;
-    };
-
-    struct TService {
-        std::string Name;
-        std::string HostsFrom;
-        std::string Path;
-    };
-
     class TRouterDProxyHandler : public NHTTPHandler::THandler {
     public:
         TRouterDProxyHandler(
             const std::unordered_map<std::string, std::vector<TServiceHost>>& hosts,
-            std::vector<std::vector<TService>>&& order
+            TRouterDGraph&& graph
         )
             : NHTTPHandler::THandler()
             , Hosts(hosts)
-            , Order(std::move(order))
+            , Graph(std::move(graph))
         {
         }
 
@@ -44,10 +34,10 @@ namespace NAC {
     private:
         const TServiceHost& GetHost(const std::string& service) const;
         void Iter(std::shared_ptr<TRouterDRequest> request) const;
-        void OnStageDone(std::shared_ptr<TRouterDRequest> request) const;
+        void ServiceReplied(std::shared_ptr<TRouterDRequest> request, const std::string& serviceName) const;
 
     private:
         const std::unordered_map<std::string, std::vector<TServiceHost>>& Hosts;
-        const std::vector<std::vector<TService>> Order;
+        TRouterDGraph Graph;
     };
 }

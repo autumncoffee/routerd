@@ -4,6 +4,8 @@
 #include <ac-common/string_sequence.hpp>
 #include <utility>
 #include <json.hh>
+#include "structs.hpp"
+#include <unordered_set>
 
 namespace NAC {
     class TRouterDRequest : public NHTTP::TRequest {
@@ -41,28 +43,39 @@ namespace NAC {
 
         TBlobSequence OutgoingRequest(const std::string& path = std::string());
 
-        void NextStage() {
-            ++Stage;
-            Counter = 0;
+        void SetGraph(const TRouterDGraph& graph) {
+            Graph = graph;
         }
 
-        size_t GetStage() const {
-            return Stage;
+        const TRouterDGraph& GetGraph() const {
+            return Graph;
         }
 
-        void NewReply() {
-            ++Counter;
+        TRouterDGraph& GetGraph() {
+            return Graph;
         }
 
-        size_t ReplyCount() const {
-            return Counter;
+        void NewReply(const std::string& name) {
+            InProgress.erase(name);
+        }
+
+        void NewRequest(const std::string& name) {
+            InProgress.insert(name);
+        }
+
+        size_t InProgressCount() const {
+            return InProgress.size();
+        }
+
+        bool IsInProgress(const std::string& name) const {
+            return (InProgress.count(name) > 0);
         }
 
     private:
         TArgs Args;
         bool OutgoingRequestInited = false;
         NHTTP::TResponse OutgoingRequest_;
-        size_t Stage = 0;
-        size_t Counter = 0;
+        TRouterDGraph Graph;
+        std::unordered_set<std::string> InProgress;
     };
 }
