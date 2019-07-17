@@ -11,11 +11,17 @@ namespace NAC {
         unsigned short Port = 0;
     };
 
+    struct TService {
+        std::string Name;
+        std::string HostsFrom;
+        std::string Path;
+    };
+
     class TRouterDProxyHandler : public NHTTPHandler::THandler {
     public:
         TRouterDProxyHandler(
             const std::unordered_map<std::string, std::vector<TServiceHost>>& hosts,
-            std::vector<std::vector<std::string>>&& order
+            std::vector<std::vector<TService>>&& order
         )
             : NHTTPHandler::THandler()
             , Hosts(hosts)
@@ -42,6 +48,6 @@ namespace NAC {
 
     private:
         const std::unordered_map<std::string, std::vector<TServiceHost>>& Hosts;
-        const std::vector<std::vector<std::string>> Order;
+        const std::vector<std::vector<TService>> Order;
     };
 }

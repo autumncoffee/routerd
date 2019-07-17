@@ -79,27 +79,51 @@ namespace NAC {
         std::unordered_map<std::string, std::shared_ptr<NHTTPHandler::THandler>> graphs;
 
         for (const auto& graph : config["graphs"].get<std::unordered_map<std::string, nlohmann::json>>()) {
-            std::unordered_set<std::string> services;
+            std::unordered_map<std::string, TService*> services;
             const auto& data = graph.second;
-            const auto& servicesVector = data["services"].get<std::vector<std::string>>();
+            std::vector<TService> servicesVector;
 
-            for (const auto& service : servicesVector) {
-                if (hosts.count(service) == 0) {
-                    std::cerr << graph.first << ": unknown service: " << service << std::endl;
+            for (const auto& service_ : data["services"].get<std::vector<nlohmann::json>>()) {
+                TService service;
+
+                if (service_.is_string()) {
+                    service.Name = service_.get<std::string>();
+                    service.HostsFrom = service.Name;
+
+                } else {
+                    service.Name = service_["name"].get<std::string>();
+
+                    if (service_.count("hosts_from") > 0) {
+                        service.HostsFrom = service_["hosts_from"].get<std::string>();
+
+                    } else {
+                        service.HostsFrom = service.Name;
+                    }
+
+                    if (service_.count("path") > 0) {
+                        service.Path = service_["path"].get<std::string>();
+                    }
+                }
+
+                if (hosts.count(service.HostsFrom) == 0) {
+                    std::cerr << graph.first << ": unknown service: " << service.HostsFrom << std::endl;
                     return 1;
                 }
 
-                services.insert(service);
+                servicesVector.push_back(std::move(service));
+
+                auto&& service__ = servicesVector.back();
+                services.emplace(service__.Name, &service__);
             }
 
-            std::vector<std::vector<std::string>> order;
+            std::vector<std::vector<TService>> order;
 
             if (data.count("deps") > 0) {
                 std::unordered_map<std::string, std::unordered_set<std::string>> tree;
                 std::unordered_map<std::string, std::unordered_set<std::string>> reverseTree;
 
                 for (const auto& service : servicesVector) {
-                    tree.emplace(service, decltype(tree)::mapped_type());
+                    tree.emplace(service.Name, decltype(tree)::mapped_type());
                 }
 
                 for (const auto& dep : data["deps"].get<std::vector<nlohmann::json>>()) {
@@ -141,6 +165,8 @@ namespace NAC {
                         return 1;
                     }
 
+                    std::vector<TService> noDeps_;
+
                     for (const auto& it1 : noDeps) {
                         if (reverseTree.count(it1) > 0) {
                             for (const auto& it2 : reverseTree.at(it1)) {
@@ -151,9 +177,10 @@ namespace NAC {
                         }
 
                         tree.erase(it1);
+                        noDeps_.push_back(*services.at(it1));
                     }
 
-                    order.emplace_back(std::move(noDeps));
+                    order.emplace_back(std::move(noDeps_));
                 }
 
             } else {

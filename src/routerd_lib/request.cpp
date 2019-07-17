@@ -101,7 +101,58 @@ namespace NAC {
         return OutgoingRequest_;
     }
 
-    TBlobSequence TRouterDRequest::OutgoingRequest() {
-        return (TBlobSequence)Out();
+    TBlobSequence TRouterDRequest::OutgoingRequest(const std::string& path) {
+        if (path.empty()) {
+            return (TBlobSequence)Out();
+        }
+
+        const auto& base = Out();
+        NHTTP::TResponse out;
+
+        {
+            const auto& firstLineParts = NStringUtils::Split(base.FirstLine(), ' ');
+
+            if (firstLineParts.size() > 1) {
+                const auto& pathParts = NStringUtils::Split(firstLineParts.at(1), '?');
+                std::string firstLine((std::string)firstLineParts.at(0) + " " + path);
+
+                for (size_t i = 1; i < pathParts.size(); ++i) {
+                    firstLine += "?" + (std::string)pathParts.at(i);
+                }
+
+                for (size_t i = 2; i < firstLineParts.size(); ++i) {
+                    firstLine += " " + (std::string)firstLineParts.at(i);
+                }
+
+                out.FirstLine(std::move(firstLine));
+
+            } else {
+                out.FirstLine(base.FirstLine());
+            }
+        }
+
+        for (const auto& baseHeader : base.Headers()) {
+            for (const auto& value : baseHeader.second) {
+                out.Header(baseHeader.first, value);
+            }
+        }
+
+        for (const auto& basePart : base.Parts()) {
+            NHTTP::TResponse part;
+
+            if (basePart.ContentLength() > 0) {
+                part.Wrap(basePart.ContentLength(), basePart.Content());
+            }
+
+            for (const auto& baseHeader : basePart.Headers()) {
+                for (const auto& value : baseHeader.second) {
+                    part.Header(baseHeader.first, value);
+                }
+            }
+
+            out.AddPart(std::move(part));
+        }
+
+        return (TBlobSequence)out;
     }
 }

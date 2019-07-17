@@ -29,20 +29,18 @@ namespace NAC {
     }
 
     void TRouterDProxyHandler::Iter(std::shared_ptr<TRouterDRequest> request) const {
-        auto msg = request->OutgoingRequest();
-        msg.Memorize(request);
         bool requestSent(false);
 
         for (const auto& service : Order.at(request->GetStage())) {
-            const auto& host = GetHost(service);
-            auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, service](
+            const auto& host = GetHost(service.HostsFrom);
+            auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, &service](
                 std::shared_ptr<NHTTP::TIncomingResponse> response,
                 std::shared_ptr<NHTTPServer::TClientBase> client
             ) {
                 client->Drop(); // TODO
                 request->NewReply();
 
-                if (service == std::string("output")) { // TODO
+                if (service.Name == std::string("output")) { // TODO
                     NHTTP::TResponse out;
                     out.FirstLine(response->FirstLine() + "\r\n");
                     CopyHeaders(response->Headers(), out);
@@ -53,7 +51,7 @@ namespace NAC {
                 }
 
                 {
-                    auto part = request->PreparePart(service);
+                    auto part = request->PreparePart(service.Name);
                     part.Wrap(response->ContentLength(), response->Content());
                     part.Memorize(response);
                     request->AddPart(std::move(part));
@@ -68,6 +66,9 @@ namespace NAC {
                 request->NewReply();
                 continue;
             }
+
+            auto msg = request->OutgoingRequest(service.Path);
+            msg.Memorize(request);
 
             rv->PushWriteQueueData(msg);
             requestSent = true;

@@ -39,7 +39,7 @@ namespace NAC {
             return defaultChunkName;
         }
 
-        TBlobSequence OutgoingRequest();
+        TBlobSequence OutgoingRequest(const std::string& path = std::string());
 
         void NextStage() {
             ++Stage;
