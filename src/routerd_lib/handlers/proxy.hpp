@@ -5,6 +5,8 @@
 #include <routerd_lib/request.hpp>
 #include <utility>
 #include <unordered_map>
+#include <ac-library/http/server/await_client.hpp>
+#include <ac-library/http/abstract_message.hpp>
 
 namespace NAC {
     class TRouterDProxyHandler : public NHTTPHandler::THandler {
@@ -35,6 +37,12 @@ namespace NAC {
         const TServiceHost& GetHost(const std::string& service) const;
         void Iter(std::shared_ptr<TRouterDRequest> request) const;
         void ServiceReplied(std::shared_ptr<TRouterDRequest> request, const std::string& serviceName) const;
+        void ProcessServiceResponse(
+            std::shared_ptr<TRouterDRequest> request,
+            std::shared_ptr<NHTTP::TIncomingResponse> response,
+            const std::string& serviceName,
+            const NHTTP::TAbstractMessage* part
+        ) const;
 
     private:
         const std::unordered_map<std::string, std::vector<TServiceHost>>& Hosts;

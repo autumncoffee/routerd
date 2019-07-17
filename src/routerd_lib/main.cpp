@@ -82,6 +82,7 @@ namespace NAC {
             const auto& data = graph.second;
             TRouterDGraph::TTree tree;
             TRouterDGraph compiledGraph;
+            std::unordered_set<std::string> dummyServices;
 
             for (const auto& service_ : data["services"].get<std::vector<nlohmann::json>>()) {
                 TService service;
@@ -91,7 +92,17 @@ namespace NAC {
                     service.HostsFrom = service.Name;
 
                 } else {
-                    service.Name = service_["name"].get<std::string>();
+                    const auto& name = service_["name"].get<std::string>();
+
+                    if ((service_.count("dummy") > 0) && service_["dummy"].get<bool>()) {
+                        if (dummyServices.count(name) == 0) {
+                            dummyServices.emplace(name);
+                        }
+
+                        continue;
+                    }
+
+                    service.Name = name;
 
                     if (service_.count("hosts_from") > 0) {
                         service.HostsFrom = service_["hosts_from"].get<std::string>();
@@ -136,7 +147,7 @@ namespace NAC {
                         return 1;
                     }
 
-                    if (compiledGraph.Services.count(b) == 0) {
+                    if ((compiledGraph.Services.count(b) == 0) && (dummyServices.count(b) == 0)) {
                         std::cerr << graph.first << ": unknown service in dependency: " << b << std::endl;
                         return 1;
                     }
@@ -152,7 +163,15 @@ namespace NAC {
                     std::vector<std::string> noDeps;
 
                     for (auto&& it : tree) {
-                        if (!it.second.empty()) {
+                        size_t nonDummyDependencyCount(0);
+
+                        for (const auto& name : it.second) {
+                            if (compiledGraph.Services.count(name) > 0) {
+                                ++nonDummyDependencyCount;
+                            }
+                        }
+
+                        if (nonDummyDependencyCount > 0) {
                             continue;
                         }
 

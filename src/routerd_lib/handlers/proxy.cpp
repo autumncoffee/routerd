@@ -4,7 +4,7 @@
 #include <utility>
 #include <random>
 #include <routerd_lib/utils.hpp>
-#include <ac-library/http/server/await_client.hpp>
+#include <ac-common/utils/string.hpp>
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
 #include <iostream>
@@ -45,71 +45,92 @@ namespace NAC {
     }
 
     void TRouterDProxyHandler::Iter(std::shared_ptr<TRouterDRequest> request) const {
-        const auto& graph = request->GetGraph();
+        auto&& graph = request->GetGraph();
 
-        for (auto&& treeIt : graph.Tree) {
-            if (!treeIt.second.empty() || request->IsInProgress(treeIt.first)) {
-                continue;
-            }
+        while (true) {
+            bool somethingHappened(false);
+            std::vector<std::string> failedServices;
+
+            for (auto&& treeIt : graph.Tree) {
+                if (!treeIt.second.empty() || request->IsInProgress(treeIt.first)) {
+                    continue;
+                }
+
+                somethingHappened = true;
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
-            std::cerr << "graph.Services.at(" << treeIt.first << ");" << std::endl;
+                std::cerr << "graph.Services.at(" << treeIt.first << ");" << std::endl;
 #endif
 
-            const auto& service = graph.Services.at(treeIt.first);
-            const auto& host = GetHost(service.HostsFrom);
-            auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, &service](
-                std::shared_ptr<NHTTP::TIncomingResponse> response,
-                std::shared_ptr<NHTTPServer::TClientBase> client
-            ) {
-                client->Drop(); // TODO
-                request->NewReply(service.Name);
+                const auto& service = graph.Services.at(treeIt.first);
+                const auto& host = GetHost(service.HostsFrom);
+                auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, &service](
+                    std::shared_ptr<NHTTP::TIncomingResponse> response,
+                    std::shared_ptr<NHTTPServer::TClientBase> client
+                ) {
+                    client->Drop(); // TODO
+                    request->NewReply(service.Name);
 
-                ServiceReplied(request, service.Name);
+                    if (response->ContentType() == std::string("multipart/x-ac-routerd")) {
+                        bool haveDirectResponse(false);
 
-                if (service.Name == std::string("output")) { // TODO
-                    NHTTP::TResponse out;
-                    out.FirstLine(response->FirstLine() + "\r\n");
-                    CopyHeaders(response->Headers(), out);
-                    out.Wrap(response->ContentLength(), response->Content());
-                    out.Memorize(response);
+                        for (const auto& part : response->Parts()) {
+                            std::string partName;
+                            NStringUtils::Strip(part.ContentDispositionParams().at("filename"), partName, 2, "\"'");
 
-                    request->Send(out);
-                }
+                            if (partName == service.Name) {
+                                haveDirectResponse = true;
+                            }
 
-                {
-                    auto part = request->PreparePart(service.Name);
-                    part.Wrap(response->ContentLength(), response->Content());
-                    part.Memorize(response);
-                    request->AddPart(std::move(part));
-                }
+                            ProcessServiceResponse(request, response, partName, &part);
+                        }
 
-                const auto& graph = request->GetGraph();
+                        if (!haveDirectResponse) {
+                            ServiceReplied(request, service.Name);
+                        }
 
-                if (graph.Tree.empty()) {
-                    if ((request->InProgressCount() == 0) && !request->IsResponseSent()) {
-                        request->Send500();
+                    } else {
+                        ProcessServiceResponse(request, response, service.Name, response.get());
                     }
 
-                } else {
                     Iter(request);
-                }
-            });
+                });
 
-            if (!rv) {
-                ServiceReplied(request, service.Name);
-                continue;
+                if (!rv) {
+                    failedServices.push_back(service.Name);
+                    continue;
+                }
+
+                auto msg = request->OutgoingRequest(service.Path);
+                msg.Memorize(request);
+
+                request->NewRequest(service.Name);
+                rv->PushWriteQueueData(msg);
             }
 
-            auto msg = request->OutgoingRequest(service.Path);
-            msg.Memorize(request);
+            for (const auto& name : failedServices) {
+                graph.Tree.erase(name);
+            }
 
-            request->NewRequest(service.Name);
-            rv->PushWriteQueueData(msg);
-        }
+            if (request->InProgressCount() == 0) { // if we couldn't send any requests
+                if (somethingHappened) { // but tried to
+                    if (graph.Tree.empty()) { // and there are no services left
+                        if (!request->IsResponseSent()) {
+                            request->Send500();
+                        }
 
-        if ((request->InProgressCount() == 0) && graph.Tree.empty() && !request->IsResponseSent()) {
-            request->Send500();
+                    } else { // and still have services to try
+                        continue;
+                    }
+
+                } else { // and won't send any
+                    if (!request->IsResponseSent()) {
+                        request->Send500();
+                    }
+                }
+            }
+
+            break;
         }
     }
 
@@ -138,5 +159,31 @@ namespace NAC {
 #endif
 
         graph.Tree.erase(serviceName);
+    }
+
+    void TRouterDProxyHandler::ProcessServiceResponse(
+        std::shared_ptr<TRouterDRequest> request,
+        std::shared_ptr<NHTTP::TIncomingResponse> response,
+        const std::string& serviceName,
+        const NHTTP::TAbstractMessage* message
+    ) const {
+        ServiceReplied(request, serviceName);
+
+        if ((serviceName == std::string("output")) && !request->IsResponseSent()) { // TODO
+            NHTTP::TResponse out;
+            out.FirstLine(response->FirstLine() + "\r\n");
+            CopyHeaders(message->Headers(), out);
+            out.Wrap(message->ContentLength(), message->Content());
+            out.Memorize(response);
+
+            request->Send(out);
+        }
+
+        {
+            auto part = request->PreparePart(serviceName);
+            part.Wrap(message->ContentLength(), message->Content());
+            part.Memorize(response);
+            request->AddPart(std::move(part));
+        }
     }
 }
