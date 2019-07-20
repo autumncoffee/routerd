@@ -82,7 +82,7 @@ namespace NAC {
                                 haveDirectResponse = true;
                             }
 
-                            ProcessServiceResponse(request, response, partName, &part);
+                            ProcessServiceResponse(request, response, partName, &part, /* contentDispositionFormData = */false);
                         }
 
                         if (!haveDirectResponse) {
@@ -165,14 +165,15 @@ namespace NAC {
         std::shared_ptr<TRouterDRequest> request,
         std::shared_ptr<NHTTP::TIncomingResponse> response,
         const std::string& serviceName,
-        const NHTTP::TAbstractMessage* message
+        const NHTTP::TAbstractMessage* message,
+        bool contentDispositionFormData
     ) const {
         ServiceReplied(request, serviceName);
 
         if ((serviceName == std::string("output")) && !request->IsResponseSent()) { // TODO
             NHTTP::TResponse out;
             out.FirstLine(response->FirstLine() + "\r\n");
-            CopyHeaders(message->Headers(), out);
+            CopyHeaders(message->Headers(), out, /* contentType = */true, contentDispositionFormData);
             out.Wrap(message->ContentLength(), message->Content());
             out.Memorize(response);
 

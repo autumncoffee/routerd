@@ -41,7 +41,8 @@ namespace NAC {
             std::shared_ptr<TRouterDRequest> request,
             std::shared_ptr<NHTTP::TIncomingResponse> response,
             const std::string& serviceName,
-            const NHTTP::TAbstractMessage* part
+            const NHTTP::TAbstractMessage* part,
+            bool contentDispositionFormData = true
         ) const;
 
     private:
