@@ -4,6 +4,7 @@
 #include <utility>
 #include <random>
 #include <routerd_lib/utils.hpp>
+#include <routerd_lib/stat.hpp>
 #include <ac-common/utils/string.hpp>
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
@@ -178,6 +179,10 @@ namespace NAC {
             out.Memorize(response);
 
             request->Send(out);
+
+            TStatReport report;
+            report.OutputStatusCode = response->StatusCode();
+            Graph.StatWriter->Write(report);
         }
 
         {

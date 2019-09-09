@@ -1,5 +1,7 @@
 #include "main.hpp"
+#include "stat.hpp"
 #include <routerd_lib/handlers/proxy.hpp>
+#include <routerd_lib/handlers/stat.hpp>
 #include <ac-library/http/server/server.hpp>
 #include <ac-library/http/router/router.hpp>
 #include <stdlib.h>
@@ -46,6 +48,7 @@ namespace NAC {
         const std::string bind4((config.count("bind4") > 0) ? config["bind4"].get<std::string>() : "");
         const std::string bind6((config.count("bind6") > 0) ? config["bind6"].get<std::string>() : "");
         std::unordered_map<std::string, std::vector<TServiceHost>> hosts;
+        std::vector<std::shared_ptr<TStatWriter>> statWriters;
 
         for (const auto& spec : config["hosts"].get<std::unordered_map<std::string, std::vector<std::string>>>()) {
             if (spec.second.empty()) {
@@ -83,6 +86,9 @@ namespace NAC {
             TRouterDGraph::TTree tree;
             TRouterDGraph compiledGraph;
             std::unordered_set<std::string> dummyServices;
+
+            statWriters.emplace_back(new TStatWriter(graph.first));
+            compiledGraph.StatWriter = statWriters.back();
 
             for (const auto& service_ : data["services"].get<std::vector<nlohmann::json>>()) {
                 TService service;
@@ -203,24 +209,39 @@ namespace NAC {
             graphs.emplace(graph.first, std::make_shared<TRouterDProxyHandler>(hosts, std::move(compiledGraph)));
         }
 
-        NHTTPRouter::TRouter router;
+        NHTTPRouter::TRouter intRouter;
+        NHTTPServer::TServer::TArgs intServerArgs;
 
-        for (const auto& route : config["routes"].get<std::vector<nlohmann::json>>()) {
-            router.Add(route["r"].get<std::string>(), graphs.at(route["g"].get<std::string>()));
+        intServerArgs.BindIP4 = "127.0.0.1";
+        intServerArgs.BindIP6 = nullptr;
+        intServerArgs.BindPort6 = intServerArgs.BindPort4 = config["stat_port"].get<unsigned short>();
+        intServerArgs.ThreadCount = 1;
+
+        intRouter.Add("^/stats/*$", std::make_shared<TRouterDStatHandler>(statWriters));
+
+        NHTTPServer::TServer statServer(intServerArgs, intRouter);
+        statServer.Start();
+
+        {
+            NHTTPRouter::TRouter router;
+
+            for (const auto& route : config["routes"].get<std::vector<nlohmann::json>>()) {
+                router.Add(route["r"].get<std::string>(), graphs.at(route["g"].get<std::string>()));
+            }
+
+            auto&& requestFactory = requestFactoryFactory(config);
+            NHTTPServer::TServer::TArgs args;
+
+            args.BindIP4 = (bind4.empty() ? nullptr : bind4.c_str());
+            args.BindIP6 = (bind6.empty() ? nullptr : bind6.c_str());
+            args.BindPort6 = args.BindPort4 = config["port"].get<unsigned short>();
+            args.ThreadCount = ((config.count("threads") > 0) ? config["threads"].get<size_t>() : 10);
+            args.ClientArgsFactory = [&router, &requestFactory]() {
+                return new NHTTPServer::TClient::TArgs(router, std::forward<NHTTPServer::TClient::TArgs::TRequestFactory>(requestFactory));
+            };
+
+            NHTTPServer::TServer(args, router).Run();
         }
-
-        auto&& requestFactory = requestFactoryFactory(config);
-        NHTTPServer::TServer::TArgs args;
-
-        args.BindIP4 = (bind4.empty() ? nullptr : bind4.c_str());
-        args.BindIP6 = (bind6.empty() ? nullptr : bind6.c_str());
-        args.BindPort6 = args.BindPort4 = config["port"].get<unsigned short>();
-        args.ThreadCount = ((config.count("threads") > 0) ? config["threads"].get<size_t>() : 10);
-        args.ClientArgsFactory = [&router, &requestFactory]() {
-            return new NHTTPServer::TClient::TArgs(router, std::forward<NHTTPServer::TClient::TArgs::TRequestFactory>(requestFactory));
-        };
-
-        NHTTPServer::TServer(args, router).Run();
 
         return 0;
     }
