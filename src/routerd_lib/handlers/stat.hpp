@@ -8,7 +8,7 @@
 namespace NAC {
     class TRouterDStatHandler : public NHTTPHandler::THandler {
     public:
-        TRouterDStatHandler(std::vector<std::shared_ptr<TStatWriter>>& stats)
+        TRouterDStatHandler(std::unordered_map<std::string, std::shared_ptr<TStatWriter>>& stats)
             : NHTTPHandler::THandler()
             , Stats(stats)
         {
@@ -20,6 +20,6 @@ namespace NAC {
         ) override;
 
     private:
-        std::vector<std::shared_ptr<TStatWriter>>& Stats;
+        std::unordered_map<std::string, std::shared_ptr<TStatWriter>>& Stats;
     };
 }

@@ -48,7 +48,6 @@ namespace NAC {
         const std::string bind4((config.count("bind4") > 0) ? config["bind4"].get<std::string>() : "");
         const std::string bind6((config.count("bind6") > 0) ? config["bind6"].get<std::string>() : "");
         std::unordered_map<std::string, std::vector<TServiceHost>> hosts;
-        std::vector<std::shared_ptr<TStatWriter>> statWriters;
 
         for (const auto& spec : config["hosts"].get<std::unordered_map<std::string, std::vector<std::string>>>()) {
             if (spec.second.empty()) {
@@ -79,16 +78,13 @@ namespace NAC {
             }
         }
 
-        std::unordered_map<std::string, std::shared_ptr<NHTTPHandler::THandler>> graphs;
+        std::unordered_map<std::string, TRouterDProxyHandler::TArgs> graphs;
 
         for (const auto& graph : config["graphs"].get<std::unordered_map<std::string, nlohmann::json>>()) {
             const auto& data = graph.second;
             TRouterDGraph::TTree tree;
             TRouterDGraph compiledGraph;
             std::unordered_set<std::string> dummyServices;
-
-            statWriters.emplace_back(new TStatWriter(graph.first));
-            compiledGraph.StatWriter = statWriters.back();
 
             for (const auto& service_ : data["services"].get<std::vector<nlohmann::json>>()) {
                 TService service;
@@ -206,7 +202,25 @@ namespace NAC {
                 compiledGraph.Tree = tree;
             }
 
-            graphs.emplace(graph.first, std::make_shared<TRouterDProxyHandler>(hosts, std::move(compiledGraph)));
+            graphs.emplace(graph.first, TRouterDProxyHandler::TArgs{hosts, std::move(compiledGraph)});
+        }
+
+        std::unordered_map<std::string, std::shared_ptr<TStatWriter>> statWriters;
+        NHTTPRouter::TRouter router;
+
+        for (const auto& route : config["routes"].get<std::vector<nlohmann::json>>()) {
+            const std::string graphName(route["g"].get<std::string>());
+            std::string name(graphName);
+
+            if (route.count("n") > 0) {
+                name = route["n"].get<std::string>();
+            }
+
+            if (statWriters.count(name) == 0) {
+                statWriters.emplace(name, new TStatWriter);
+            }
+
+            router.Add(route["r"].get<std::string>(), std::make_shared<TRouterDProxyHandler>(graphs.at(graphName), statWriters.at(name)));
         }
 
         NHTTPRouter::TRouter intRouter;
@@ -223,12 +237,6 @@ namespace NAC {
         statServer.Start();
 
         {
-            NHTTPRouter::TRouter router;
-
-            for (const auto& route : config["routes"].get<std::vector<nlohmann::json>>()) {
-                router.Add(route["r"].get<std::string>(), graphs.at(route["g"].get<std::string>()));
-            }
-
             auto&& requestFactory = requestFactoryFactory(config);
             NHTTPServer::TServer::TArgs args;
 

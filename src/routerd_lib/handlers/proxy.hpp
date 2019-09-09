@@ -7,17 +7,24 @@
 #include <unordered_map>
 #include <ac-library/http/server/await_client.hpp>
 #include <ac-library/http/abstract_message.hpp>
+#include <memory>
 
 namespace NAC {
+    class TStatWriter;
+
     class TRouterDProxyHandler : public NHTTPHandler::THandler {
     public:
-        TRouterDProxyHandler(
-            const std::unordered_map<std::string, std::vector<TServiceHost>>& hosts,
-            TRouterDGraph&& graph
-        )
+        struct TArgs {
+            const std::unordered_map<std::string, std::vector<TServiceHost>>& Hosts;
+            TRouterDGraph Graph;
+        };
+
+    public:
+        TRouterDProxyHandler(const TArgs& args, std::shared_ptr<TStatWriter> statWriter)
             : NHTTPHandler::THandler()
-            , Hosts(hosts)
-            , Graph(std::move(graph))
+            , Hosts(args.Hosts)
+            , Graph(args.Graph)
+            , StatWriter(statWriter)
         {
         }
 
@@ -48,5 +55,6 @@ namespace NAC {
     private:
         const std::unordered_map<std::string, std::vector<TServiceHost>>& Hosts;
         TRouterDGraph Graph;
+        std::shared_ptr<TStatWriter> StatWriter;
     };
 }

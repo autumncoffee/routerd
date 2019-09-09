@@ -182,7 +182,7 @@ namespace NAC {
 
             TStatReport report;
             report.OutputStatusCode = response->StatusCode();
-            Graph.StatWriter->Write(report);
+            StatWriter->Write(report);
         }
 
         {

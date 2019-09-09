@@ -2,11 +2,6 @@
 #include <utility>
 
 namespace NAC {
-    TStatWriter::TStatWriter(const std::string& graphName)
-        : GraphName_(graphName)
-    {
-    }
-
     void TStatWriter::Write(const TStatReport& report) {
         NUtils::TSpinLockGuard guard(Lock);
 

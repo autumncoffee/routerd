@@ -9,8 +9,8 @@ namespace NAC {
         auto out = nlohmann::json::object();
 
         for (auto&& statWriter : Stats) {
-            auto&& stats = statWriter->Extract();
-            auto&& graphOut = out[statWriter->GraphName()] = nlohmann::json::object();
+            auto&& stats = statWriter.second->Extract();
+            auto&& graphOut = out[statWriter.first] = nlohmann::json::object();
             auto&& outputStatusCodes = graphOut["output_status_codes"] = nlohmann::json::object();
 
             for (const auto& it : stats.OutputStatusCodes) {
