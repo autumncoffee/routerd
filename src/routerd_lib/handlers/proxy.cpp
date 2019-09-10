@@ -172,17 +172,28 @@ namespace NAC {
         ServiceReplied(request, serviceName);
 
         if ((serviceName == std::string("output")) && !request->IsResponseSent()) { // TODO
-            NHTTP::TResponse out;
-            out.FirstLine(response->FirstLine() + "\r\n");
-            CopyHeaders(message->Headers(), out, /* contentType = */true, contentDispositionFormData);
-            out.Wrap(message->ContentLength(), message->Content());
-            out.Memorize(response);
+            {
+                NHTTP::TResponse out;
+                out.FirstLine(response->FirstLine() + "\r\n");
+                CopyHeaders(message->Headers(), out, /* contentType = */true, contentDispositionFormData);
+                out.Wrap(message->ContentLength(), message->Content());
+                out.Memorize(response);
 
-            request->Send(out);
+                request->Send(out);
+            }
 
-            TStatReport report;
-            report.OutputStatusCode = response->StatusCode();
-            StatWriter->Write(report);
+            {
+                size_t statusCode = response->StatusCode();
+                const auto& statusCodeHint = message->HeaderValue("x-ac-routerd-statuscode");
+
+                if (!statusCodeHint.empty()) {
+                    NStringUtils::FromString(statusCodeHint, statusCode);
+                }
+
+                TStatReport report;
+                report.OutputStatusCode = statusCode;
+                StatWriter->Write(report);
+            }
         }
 
         {
