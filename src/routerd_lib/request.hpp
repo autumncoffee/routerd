@@ -6,6 +6,7 @@
 #include <json.hh>
 #include "structs.hpp"
 #include <unordered_set>
+#include <chrono>
 
 namespace NAC {
     class TRouterDRequest : public NHTTP::TRequest {
@@ -21,6 +22,7 @@ namespace NAC {
         TRouterDRequest(const TArgs& args, TArgs_&&... args_)
             : NHTTP::TRequest(std::forward<TArgs_>(args_)...)
             , Args(args)
+            , StartTime_(std::chrono::steady_clock::now())
         {
         }
 
@@ -71,11 +73,16 @@ namespace NAC {
             return (InProgress.count(name) > 0);
         }
 
+        const std::chrono::steady_clock::time_point& StartTime() const {
+            return StartTime_;
+        }
+
     private:
         TArgs Args;
         bool OutgoingRequestInited = false;
         NHTTP::TResponse OutgoingRequest_;
         TRouterDGraph Graph;
         std::unordered_set<std::string> InProgress;
+        std::chrono::steady_clock::time_point StartTime_;
     };
 }

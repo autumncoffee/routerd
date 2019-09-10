@@ -7,10 +7,13 @@
 namespace NAC {
     struct TStatReport {
         size_t OutputStatusCode = 0;
+        size_t TotalTime = 0;
     };
 
     struct TStats {
         std::unordered_map<size_t, size_t> OutputStatusCodes;
+        size_t TotalTime = 0;
+        size_t ReportCount = 0;
     };
 
     class TStatWriter {

@@ -183,6 +183,7 @@ namespace NAC {
             }
 
             {
+                auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - request->StartTime()).count();
                 size_t statusCode = response->StatusCode();
                 const auto& statusCodeHint = message->HeaderValue("x-ac-routerd-statuscode");
 
@@ -192,6 +193,7 @@ namespace NAC {
 
                 TStatReport report;
                 report.OutputStatusCode = statusCode;
+                report.TotalTime = elapsed;
                 StatWriter->Write(report);
             }
         }
