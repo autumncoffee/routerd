@@ -47,6 +47,8 @@ namespace NAC {
         auto&& config = ParseConfig(configPath);
         const std::string bind4((config.count("bind4") > 0) ? config["bind4"].get<std::string>() : "");
         const std::string bind6((config.count("bind6") > 0) ? config["bind6"].get<std::string>() : "");
+        const std::string statBind4((config.count("stat_bind4") > 0) ? config["stat_bind4"].get<std::string>() : "");
+        const std::string statBind6((config.count("stat_bind6") > 0) ? config["stat_bind6"].get<std::string>() : "");
         std::unordered_map<std::string, std::vector<TServiceHost>> hosts;
 
         for (const auto& spec : config["hosts"].get<std::unordered_map<std::string, std::vector<std::string>>>()) {
@@ -226,15 +228,25 @@ namespace NAC {
         NHTTPRouter::TRouter intRouter;
         NHTTPServer::TServer::TArgs intServerArgs;
 
-        intServerArgs.BindIP4 = "127.0.0.1";
-        intServerArgs.BindIP6 = nullptr;
-        intServerArgs.BindPort6 = intServerArgs.BindPort4 = config["stat_port"].get<unsigned short>();
+        intServerArgs.BindIP4 = (statBind4.empty() ? nullptr : statBind4.c_str());
+        intServerArgs.BindIP6 = (statBind6.empty() ? nullptr : statBind6.c_str());
+
+        if (config.count("stat_port") > 0) {
+            intServerArgs.BindPort6 = intServerArgs.BindPort4 = config["stat_port"].get<unsigned short>();
+
+        } else {
+            intServerArgs.BindPort6 = intServerArgs.BindPort4 = 0;
+        }
+
         intServerArgs.ThreadCount = 1;
 
         intRouter.Add("^/stats/*$", std::make_shared<TRouterDStatHandler>(statWriters));
 
         NHTTPServer::TServer statServer(intServerArgs, intRouter);
-        statServer.Start();
+
+        if ((intServerArgs.BindIP4 || intServerArgs.BindIP6) && (intServerArgs.BindPort4 != 0)) {
+            statServer.Start();
+        }
 
         {
             auto&& requestFactory = requestFactoryFactory(config);
