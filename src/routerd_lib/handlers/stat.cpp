@@ -1,5 +1,6 @@
 #include "stat.hpp"
 #include <json.hh>
+#include <set>
 
 namespace NAC {
     void TRouterDStatHandler::Handle(
@@ -25,6 +26,25 @@ namespace NAC {
 
             } else {
                 graphOut["avg_time"] = 0;
+            }
+
+            std::set<size_t> totalTimeBuckets;
+
+            for (const auto& it : stats.TotalTimes) {
+                totalTimeBuckets.insert(it.first);
+            }
+
+            graphOut["time_buckets"] = nlohmann::json::array();
+
+            for (size_t bucket : totalTimeBuckets) {
+                const auto& node = stats.TotalTimes.at(bucket);
+                nlohmann::json outNode;
+
+                outNode["bucket"] = bucket;
+                outNode["avg_time"] = (size_t)(((double)node.TotalTime / (double)node.ReportCount) + 0.5);
+                outNode["count"] = node.ReportCount;
+
+                graphOut["time_buckets"].push_back(std::move(outNode));
             }
         }
 

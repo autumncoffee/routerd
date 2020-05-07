@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <utility>
 #include <sstream>
+#include <set>
 
 namespace {
     nlohmann::json ParseConfig(const std::string& path) {
@@ -207,6 +208,14 @@ namespace NAC {
             graphs.emplace(graph.first, TRouterDProxyHandler::TArgs{hosts, std::move(compiledGraph)});
         }
 
+        std::set<size_t> responseTimeBuckets;
+
+        if (config.count("response_time_buckets") > 0) {
+            for (size_t bucket : config["response_time_buckets"].get<std::vector<size_t>>()) {
+                responseTimeBuckets.insert(bucket);
+            }
+        }
+
         std::unordered_map<std::string, std::shared_ptr<TStatWriter>> statWriters;
         NHTTPRouter::TRouter router;
 
@@ -219,7 +228,7 @@ namespace NAC {
             }
 
             if (statWriters.count(name) == 0) {
-                statWriters.emplace(name, new TStatWriter);
+                statWriters.emplace(name, new TStatWriter(responseTimeBuckets));
             }
 
             router.Add(route["r"].get<std::string>(), std::make_shared<TRouterDProxyHandler>(graphs.at(graphName), statWriters.at(name)));
