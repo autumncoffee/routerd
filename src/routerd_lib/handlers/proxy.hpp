@@ -42,7 +42,7 @@ namespace NAC {
 
     private:
         const TServiceHost& GetHost(const std::string& service) const;
-        void Iter(std::shared_ptr<TRouterDRequest> request) const;
+        void Iter(std::shared_ptr<TRouterDRequest> request, const std::vector<std::string>& args) const;
         void ServiceReplied(std::shared_ptr<TRouterDRequest> request, const std::string& serviceName) const;
         void ProcessServiceResponse(
             std::shared_ptr<TRouterDRequest> request,

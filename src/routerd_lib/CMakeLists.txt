@@ -17,4 +17,5 @@ target_link_libraries(
     ac_common
     ac_library_http
     ac_library_http_router
+    "-lpcrecpp"
 )

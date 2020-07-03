@@ -14,7 +14,7 @@
 namespace NAC {
     void TRouterDProxyHandler::Handle(
         std::shared_ptr<TRouterDRequest> request,
-        const std::vector<std::string>& /* args */
+        const std::vector<std::string>& args
     ) {
 #ifdef AC_DEBUG_ROUTERD_PROXY
         for (const auto& it1 : Graph.Tree) {
@@ -28,7 +28,7 @@ namespace NAC {
 
         request->SetGraph(Graph);
 
-        Iter(request);
+        Iter(request, args);
     }
 
     const TServiceHost& TRouterDProxyHandler::GetHost(const std::string& service) const {
@@ -45,7 +45,7 @@ namespace NAC {
         return hosts.front();
     }
 
-    void TRouterDProxyHandler::Iter(std::shared_ptr<TRouterDRequest> request) const {
+    void TRouterDProxyHandler::Iter(std::shared_ptr<TRouterDRequest> request, const std::vector<std::string>& args) const {
         auto&& graph = request->GetGraph();
 
         while (true) {
@@ -65,7 +65,7 @@ namespace NAC {
 
                 const auto& service = graph.Services.at(treeIt.first);
                 const auto& host = GetHost(service.HostsFrom);
-                auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, &service](
+                auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, &service, args](
                     std::shared_ptr<NHTTP::TIncomingResponse> response,
                     std::shared_ptr<NHTTPServer::TClientBase> client
                 ) {
@@ -94,7 +94,7 @@ namespace NAC {
                         ProcessServiceResponse(request, response, service.Name, response.get());
                     }
 
-                    Iter(request);
+                    Iter(request, args);
                 });
 
                 if (!rv) {
@@ -102,7 +102,7 @@ namespace NAC {
                     continue;
                 }
 
-                auto msg = request->OutgoingRequest(service.Path);
+                auto msg = request->OutgoingRequest(service.Path, args);
                 msg.Memorize(request);
 
                 request->NewRequest(service.Name);

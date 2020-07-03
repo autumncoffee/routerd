@@ -43,7 +43,7 @@ namespace NAC {
             return defaultChunkName;
         }
 
-        TBlobSequence OutgoingRequest(const std::string& path = std::string());
+        TBlobSequence OutgoingRequest(const std::string& path, const std::vector<std::string>& args);
 
         void SetGraph(const TRouterDGraph& graph) {
             Graph = graph;

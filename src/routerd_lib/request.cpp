@@ -2,6 +2,7 @@
 #include <ac-common/str.hpp>
 #include "utils.hpp"
 #include <string.h>
+#include <pcrecpp.h>
 
 namespace NAC {
     TRouterDRequest::TArgs TRouterDRequest::TArgs::FromConfig(const nlohmann::json& config) {
@@ -101,9 +102,20 @@ namespace NAC {
         return OutgoingRequest_;
     }
 
-    TBlobSequence TRouterDRequest::OutgoingRequest(const std::string& path) {
-        if (path.empty()) {
+    TBlobSequence TRouterDRequest::OutgoingRequest(const std::string& path_, const std::vector<std::string>& args) {
+        if (path_.empty()) {
             return (TBlobSequence)Out();
+        }
+
+        std::string path(path_);
+
+        for (size_t i = 0; i < args.size(); ++i) {
+            pcrecpp::RE(
+                std::string("{\\s*")
+                + std::to_string(i + 1)
+                + std::string("\\s*}")
+
+            ).GlobalReplace(args.at(i), &path);
         }
 
         const auto& base = Out();
