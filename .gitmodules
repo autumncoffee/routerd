@@ -3,4 +3,4 @@
 	url = https://github.com/autumncoffee/cxx-common.git
 [submodule "ac/ac-library"]
 	path = ac/ac-library
-	url = https://github.com/autumncoffee/cxx-library.git
+	url = https://github.com/sutyrin/cxx-library.git
