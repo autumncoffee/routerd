@@ -6,6 +6,7 @@
 #include <routerd_lib/utils.hpp>
 #include <routerd_lib/stat.hpp>
 #include <ac-common/utils/string.hpp>
+#include <iostream>
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
 #include <iostream>
