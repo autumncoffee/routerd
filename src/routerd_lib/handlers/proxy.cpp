@@ -102,11 +102,44 @@ namespace NAC {
                     continue;
                 }
 
-                auto msg = request->OutgoingRequest(service.Path, args);
-                msg.Memorize(request);
-
                 request->NewRequest(service.Name);
-                rv->PushWriteQueueData(msg);
+
+                if (!service.OnlyContextPart.empty()) {
+                    std::cerr << "service " << service.Name << " wants only_context_part " << service.OnlyContextPart << std::endl;
+//                    std::cerr << "=== parts ===" << std::endl;
+
+                    for (auto &&part : request->GetOutGoingRequest().Parts()) {
+//                        std::cerr << "[part]" << std::endl;
+                        std::string ContentDisposition;
+                        NHTTP::THeaderParams ContentDispositionParams;
+                        NHTTPUtils::ParseHeader(part.Headers(), "content-disposition",
+                                                ContentDisposition, ContentDispositionParams);
+
+//                        std::cerr << "    content-disposition: " << ContentDisposition << std::endl;
+//                        std::cerr << "    content-disposition-params: " << std::endl;
+                        for(auto [k, v]: ContentDispositionParams) {
+//                            std::cerr << "k='" << k << "', v='" << v << "'" << std::endl;
+                            if (k == "filename" && v == std::string("\"") + service.OnlyContextPart + std::string("\"")) {
+                                std::cerr << "  ! will send this part ! " << std::endl;
+                                rv->PushWriteQueueData(part.GetBody());
+                            }
+                        }
+//                        for(auto [name, value] : part.Headers()) {
+//                            std::cerr << "  [header] " << name << ": " << std::endl;
+//                            for(auto v : value ) {
+//                                std::cerr << "    " << v << std::endl;
+//                            }
+//                        }
+//                        std::cerr << "  [content]" << std::endl << part.Content();
+//                        std::cerr << "[/content]" << std::endl << std::endl;
+                    }
+//                  std::cerr << "=== end of parts ===" << std::endl;
+                } else {
+                    auto msg = request->OutgoingRequest(service.Path, args);
+                    msg.Memorize(request);
+
+                    rv->PushWriteQueueData(msg);
+                }
             }
 
             for (const auto& name : failedServices) {
@@ -199,6 +232,7 @@ namespace NAC {
         }
 
         {
+
             auto part = request->PreparePart(serviceName);
             part.Wrap(message->ContentLength(), message->Content());
             part.Memorize(response);

@@ -121,6 +121,12 @@ namespace NAC {
                     }
 
                     if (service_.count("only_context_part") > 0) {
+//                        if (compiledGraph.Services.count(service.Name) == 0) {
+//                            std::cerr << graph.first << ": service not found: "
+//                                      << service_["only_context_part"].get<std::string>()
+//                                      << std::endl;
+//                            return 1;
+//                        }
                         service.OnlyContextPart = service_["only_context_part"].get<std::string>();
                     }
                 }

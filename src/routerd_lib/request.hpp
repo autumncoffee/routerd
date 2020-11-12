@@ -73,6 +73,10 @@ namespace NAC {
             return (InProgress.count(name) > 0);
         }
 
+        const NHTTP::TResponse& GetOutGoingRequest() const {
+            return OutgoingRequest_;
+        }
+
         const std::chrono::steady_clock::time_point& StartTime() const {
             return StartTime_;
         }
