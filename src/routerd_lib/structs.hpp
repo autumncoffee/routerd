@@ -14,6 +14,7 @@ namespace NAC {
         std::string Name;
         std::string HostsFrom;
         std::string Path;
+        std::string OnlyContextPart;
     };
 
     struct TRouterDGraph {

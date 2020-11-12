@@ -119,6 +119,10 @@ namespace NAC {
                     if (service_.count("path") > 0) {
                         service.Path = service_["path"].get<std::string>();
                     }
+
+                    if (service_.count("only_context_part") > 0) {
+                        service.OnlyContextPart = service_["only_context_part"].get<std::string>();
+                    }
                 }
 
                 if (hosts.count(service.HostsFrom) == 0) {
@@ -266,7 +270,8 @@ namespace NAC {
             args.BindPort6 = args.BindPort4 = config["port"].get<unsigned short>();
             args.ThreadCount = ((config.count("threads") > 0) ? config["threads"].get<size_t>() : 10);
             args.ClientArgsFactory = [&router, &requestFactory]() {
-                return new NHTTPServer::TClient::TArgs(router, std::forward<NHTTPServer::TClient::TArgs::TRequestFactory>(requestFactory));
+                return new NHTTPServer::TClient::TArgs(
+                        router, std::forward<NHTTPServer::TClient::TArgs::TRequestFactory>(requestFactory));
             };
 
             NHTTPServer::TServer(args, router).Run();
