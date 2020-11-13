@@ -106,35 +106,48 @@ namespace NAC {
                 request->NewRequest(service.Name);
 
                 if (!service.OnlyContextPart.empty()) {
-                    std::cerr << "service " << service.Name << " wants only_context_part " << service.OnlyContextPart << std::endl;
-//                    std::cerr << "=== parts ===" << std::endl;
-
-                    for (auto &&part : request->GetOutGoingRequest().Parts()) {
-//                        std::cerr << "[part]" << std::endl;
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                    std::cerr << "service " << service.Name << " will get only_context_part " << service.OnlyContextPart << std::endl;
+                    std::cerr << "=== parts ===" << std::endl;
+#endif
+                    for (auto&& part : request->GetOutGoingRequest().Parts()) {
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                        std::cerr << "[part]" << std::endl;
+#endif
                         std::string ContentDisposition;
                         NHTTP::THeaderParams ContentDispositionParams;
                         NHTTPUtils::ParseHeader(part.Headers(), "content-disposition",
                                                 ContentDisposition, ContentDispositionParams);
-
-//                        std::cerr << "    content-disposition: " << ContentDisposition << std::endl;
-//                        std::cerr << "    content-disposition-params: " << std::endl;
-                        for(auto [k, v]: ContentDispositionParams) {
-//                            std::cerr << "k='" << k << "', v='" << v << "'" << std::endl;
-                            if (k == "filename" && v == std::string("\"") + service.OnlyContextPart + std::string("\"")) {
-                                std::cerr << "  ! will send this part ! " << std::endl;
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                        std::cerr << "  content-disposition: " << ContentDisposition << std::endl;
+                        std::cerr << "  content-disposition-params: " << std::endl;
+#endif
+                        for (auto [key, value]: ContentDispositionParams) {
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                            std::cerr << "    key='" << key << "', value='" << value << "'" << std::endl;
+#endif
+                            if (key == "filename" && value == std::string("\"") + service.OnlyContextPart + std::string("\"")) {
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                                std::cerr << "      will send part " << value << ", size: " << part.ContentLength() << " bytes" << std::endl;
+#endif
                                 rv->PushWriteQueueData(part.GetBody());
                             }
                         }
-//                        for(auto [name, value] : part.Headers()) {
-//                            std::cerr << "  [header] " << name << ": " << std::endl;
-//                            for(auto v : value ) {
-//                                std::cerr << "    " << v << std::endl;
-//                            }
-//                        }
-//                        std::cerr << "  [content]" << std::endl << part.Content();
-//                        std::cerr << "[/content]" << std::endl << std::endl;
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                        for(auto [name, value] : part.Headers()) {
+                            std::cerr << "  [header] " << name << ": " << std::endl;
+                            for(auto v : value ) {
+                                std::cerr << "    " << v << std::endl;
+                            }
+                        }
+                        std::cerr << "  [content]" << part.Content()
+                                  << "[/content]" << std::endl;
+                        std::cerr << "[/part]" << std::endl;
+#endif
                     }
-//                  std::cerr << "=== end of parts ===" << std::endl;
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                  std::cerr << "=== end of parts ===" << std::endl;
+#endif
                 } else {
                     auto msg = request->OutgoingRequest(service.Path, args);
                     msg.Memorize(request);
