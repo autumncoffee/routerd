@@ -126,7 +126,7 @@ namespace NAC {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                             std::cerr << "    key='" << key << "', value='" << value << "'" << std::endl;
 #endif
-                            if (key == "filename" && value == std::string("\"") + service.OnlyContextPart + std::string("\"")) {
+                            if (key == std::string("filename") && value == std::string("\"") + service.OnlyContextPart + std::string("\"")) {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                                 std::cerr << "      will send part " << value << ", size: " << part.ContentLength() << " bytes" << std::endl;
 #endif

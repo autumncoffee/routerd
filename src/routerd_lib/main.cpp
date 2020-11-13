@@ -121,13 +121,14 @@ namespace NAC {
                     }
 
                     if (service_.count("only_context_part") > 0) {
-//                        if (compiledGraph.Services.count(service.Name) == 0) {
-//                            std::cerr << graph.first << ": service not found: "
-//                                      << service_["only_context_part"].get<std::string>()
-//                                      << std::endl;
-//                            return 1;
-//                        }
+                        // this value will be validated later, when all services are parsed
                         service.OnlyContextPart = service_["only_context_part"].get<std::string>();
+                    }
+
+                    if (service_.count("path") > 0 and service_.count("only_context_part") > 0) {
+                        std::cerr << graph.first << ": cannot have both 'path' and 'only_context_part' specified "
+                                  << "for service " << service.Name << std::endl;
+                        return 1;
                     }
                 }
 
@@ -137,7 +138,7 @@ namespace NAC {
                 }
 
                 if (compiledGraph.Services.count(service.Name) > 0) {
-                    std::cerr << graph.first << ": service already present: " << service.Name << std::endl;
+                    std::cerr << graph.first << ": multiple service definitions of the same name: " << service.Name << std::endl;
                     return 1;
                 }
 
@@ -153,7 +154,7 @@ namespace NAC {
                     const auto& b = dep["b"].get<std::string>();
 
                     if (a == b) {
-                        std::cerr << graph.first << ": " << a << " depends on itself" << std::endl;
+                        std::cerr << graph.first << ": " << a << " depends on itself, which is wrong" << std::endl;
                         return 1;
                     }
 
@@ -194,7 +195,7 @@ namespace NAC {
                     }
 
                     if (noDeps.empty()) {
-                        std::cerr << graph.first << ": cycle in dependencies" << std::endl;
+                        std::cerr << graph.first << ": there is a cycle in dependencies, which is wrong" << std::endl;
                         return 1;
                     }
 
@@ -208,6 +209,37 @@ namespace NAC {
                         }
 
                         tree.erase(it1);
+                    }
+                }
+
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                std::cerr << "=== service dependency tree ===" << std::endl;
+                for (auto&& [name, service] : compiledGraph.Services) {
+                    std::cerr << name << ":" << std::endl;
+                    if (compiledGraph.Tree[name].size() > 0) {
+                        std::cerr << "  it depends on these:" << std::endl;
+                        for (auto&& node : compiledGraph.Tree[name]) {
+                            std::cerr << "    " << node << std::endl;
+                        }
+                    }
+                    if(compiledGraph.ReverseTree[name].size() > 0) {
+                        std::cerr << "  these depend on it:" << std::endl;
+                        for (auto&& node : compiledGraph.ReverseTree[name]) {
+                            std::cerr << "    " << node << std::endl;
+                        }
+                    }
+                }
+                std::cerr << "=== end of service dependency tree ===" << std::endl;
+#endif
+
+                for (auto&& [name, service] : compiledGraph.Services) {
+                    if (!service.OnlyContextPart.empty()) {
+                        if (compiledGraph.Tree.count(name) == 0
+                            || compiledGraph.Tree[name].count(service.OnlyContextPart) == 0) {
+                            std::cerr << name << ": 'only_context_part' = '" << service.OnlyContextPart << "', "
+                                      << "but service " << service.OnlyContextPart << " is not defined as "
+                                      << "a dependency of service " << name << std::endl;
+                        }
                     }
                 }
 
