@@ -235,7 +235,8 @@ namespace NAC {
                 for (auto&& [name, service] : compiledGraph.Services) {
                     if (!service.OnlyContextPart.empty()) {
                         if (compiledGraph.Tree.count(name) == 0
-                            || compiledGraph.Tree[name].count(service.OnlyContextPart) == 0) {
+                            || compiledGraph.Tree[name].count(service.OnlyContextPart) == 0
+                        ) {
                             std::cerr << name << ": 'only_context_part' = '" << service.OnlyContextPart << "', "
                                       << "but service " << service.OnlyContextPart << " is not defined as "
                                       << "a dependency of service " << name << std::endl;
