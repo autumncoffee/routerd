@@ -120,13 +120,13 @@ namespace NAC {
                         service.Path = service_["path"].get<std::string>();
                     }
 
-                    if (service_.count("only_context_part") > 0) {
+                    if (service_.count("send_raw_output_of") > 0) {
                         // this value will be validated later, when all services are parsed
-                        service.OnlyContextPart = service_["only_context_part"].get<std::string>();
+                        service.SendRawOutputOf = service_["send_raw_output_of"].get<std::string>();
                     }
 
-                    if (service_.count("path") > 0 && service_.count("only_context_part") > 0) {
-                        std::cerr << graph.first << ": cannot have both 'path' and 'only_context_part' specified "
+                    if (service_.count("path") > 0 && service_.count("send_raw_output_of") > 0) {
+                        std::cerr << graph.first << ": cannot have both 'path' and 'send_raw_output_of' specified "
                                   << "for service " << service.Name << std::endl;
                         return 1;
                     }
@@ -233,12 +233,12 @@ namespace NAC {
 #endif
 
                 for (auto&& [name, service] : compiledGraph.Services) {
-                    if (!service.OnlyContextPart.empty()) {
+                    if (!service.SendRawOutputOf.empty()) {
                         if (compiledGraph.Tree.count(name) == 0
-                            || compiledGraph.Tree[name].count(service.OnlyContextPart) == 0
+                            || compiledGraph.Tree[name].count(service.SendRawOutputOf) == 0
                         ) {
-                            std::cerr << name << ": 'only_context_part' = '" << service.OnlyContextPart << "', "
-                                      << "but service " << service.OnlyContextPart << " is not defined as "
+                            std::cerr << name << ": 'send_raw_output_of' = '" << service.SendRawOutputOf << "', "
+                                      << "but service " << service.SendRawOutputOf << " is not defined as "
                                       << "a dependency of service " << name << std::endl;
                         }
                     }

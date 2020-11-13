@@ -105,9 +105,9 @@ namespace NAC {
 
                 request->NewRequest(service.Name);
 
-                if (!service.OnlyContextPart.empty()) {
+                if (!service.SendRawOutputOf.empty()) {
 #ifdef AC_DEBUG_ROUTERD_PROXY
-                    std::cerr << "service " << service.Name << " will get only_context_part " << service.OnlyContextPart << std::endl;
+                    std::cerr << "to service " << service.Name << " will send_raw_output_of " << service.SendRawOutputOf << std::endl;
                     std::cerr << "=== parts ===" << std::endl;
 #endif
                     for (auto&& part : request->GetOutGoingRequest().Parts()) {
@@ -126,7 +126,7 @@ namespace NAC {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                             std::cerr << "    key='" << key << "', value='" << value << "'" << std::endl;
 #endif
-                            if (key == std::string("filename") && value == std::string("\"") + service.OnlyContextPart + std::string("\"")) {
+                            if (key == std::string("filename") && value == std::string("\"") + service.SendRawOutputOf + std::string("\"")) {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                                 std::cerr << "      will send part " << value << ", size: " << part.ContentLength() << " bytes" << std::endl;
 #endif
