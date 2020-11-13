@@ -125,7 +125,7 @@ namespace NAC {
                         service.OnlyContextPart = service_["only_context_part"].get<std::string>();
                     }
 
-                    if (service_.count("path") > 0 and service_.count("only_context_part") > 0) {
+                    if (service_.count("path") > 0 && service_.count("only_context_part") > 0) {
                         std::cerr << graph.first << ": cannot have both 'path' and 'only_context_part' specified "
                                   << "for service " << service.Name << std::endl;
                         return 1;
