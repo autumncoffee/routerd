@@ -243,10 +243,20 @@ namespace NAC {
                         if (compiledGraph.Tree.count(name) == 0
                             || compiledGraph.Tree[name].count(service.SendRawOutputOf) == 0
                         ) {
-                            std::cerr << name << ": 'send_raw_output_of' = '" << service.SendRawOutputOf << "', "
+                            std::cerr << name << ": service " << name
+                                      << " has 'send_raw_output_of' = '" << service.SendRawOutputOf << "', "
                                       << "but service " << service.SendRawOutputOf << " is not defined as "
                                       << "a dependency of service " << name << std::endl;
+                            return 1;
                         }
+                    }
+                    if (
+                        !service.SaveAs.empty()
+                        && (compiledGraph.Services.count(service.SaveAs) > 0|| dummyServices.count(service.SaveAs) > 0)
+                    ) {
+                        std::cerr << name << ": service " << name << " has 'save_as' = '" << service.SaveAs << "'"
+                                  << ", which is a name of another service, which is wrong" << std::endl;
+                        return 1;
                     }
                 }
 
