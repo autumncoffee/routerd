@@ -299,8 +299,7 @@ namespace NAC {
     ) const {
         ServiceReplied(request, serviceName);
 
-        if ((serviceName == std::string("output")) && !request->IsResponseSent()
-        ) { // TODO
+        if ((serviceName == std::string("output")) && !request->IsResponseSent()) { // TODO
             {
                 NHTTP::TResponse out;
                 out.FirstLine(response->FirstLine() + "\r\n");
