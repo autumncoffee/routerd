@@ -75,8 +75,12 @@ namespace NAC {
             std::cerr << "[part]" << std::endl;
             std::string ContentDisposition;
             NHTTP::THeaderParams ContentDispositionParams;
-            NHTTPUtils::ParseHeader(part.Headers(), "content-disposition",
-                                    ContentDisposition, ContentDispositionParams);
+            NHTTPUtils::ParseHeader(
+                    part.Headers(),
+                    "content-disposition",
+                    ContentDisposition,
+                    ContentDispositionParams
+            );
             std::cerr << "  content-length: " << part.ContentLength() << std::endl;
             std::cerr << "  content-disposition: " << ContentDisposition << std::endl;
             std::cerr << "  content-disposition-params: " << std::endl;
@@ -92,10 +96,12 @@ namespace NAC {
                     std::cerr << "    " << v << std::endl;
                 }
             }
+
             std::cerr << "  [content]" << std::string(part.Content(), part.ContentLength())
                       << "[/content]" << std::endl;
             std::cerr << "[/part]" << std::endl;
         }
+
         std::cerr << "=== end of parts ===" << std::endl;
         std::cerr << "== END OF OUTGOING REQUEST == " << std::endl;
     }
