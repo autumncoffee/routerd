@@ -55,12 +55,14 @@ namespace NAC {
         for (auto&& [header, values] : outgoing_request.Headers()) {
             std::cerr << "  " << header << ":";
 
-            if(values.size() == 1) {
+            if (values.size() == 1) {
                 std::cerr << " " << values.at(0) << std::endl;
-            } else if (values.size() >= 2 ) {
+
+            } else if (values.size() >= 2) {
                 for (auto&& value : values) {
                     std::cerr << std::endl << "  " << value << std::endl;
                 }
+
             } else {
                 std::cerr << " (empty)" << std::endl;
             }
@@ -85,6 +87,7 @@ namespace NAC {
 
             for (auto [name, value] : part.Headers()) {
                 std::cerr << "  [header] " << name << ": " << std::endl;
+
                 for (auto v : value) {
                     std::cerr << "    " << v << std::endl;
                 }
