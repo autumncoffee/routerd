@@ -47,16 +47,18 @@ namespace NAC {
     }
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
-    void TRouterDProxyHandler::print_outgoing_request(std::shared_ptr<TRouterDRequest> request) const{
-        auto &outgoing_request = request->GetOutGoingRequest();
+    void TRouterDProxyHandler::printOutgoingRequest(std::shared_ptr<TRouterDRequest> request) const{
+        auto& outgoing_request = request->GetOutGoingRequest();
         std::cerr << "== OUTGOING REQUEST == " << std::endl;
         std::cerr << "=== headers ===" << std::endl;
-        for (auto && [header, values] : outgoing_request.Headers()) {
+
+        for (auto&& [header, values] : outgoing_request.Headers()) {
             std::cerr << "  " << header << ":";
+
             if(values.size() == 1) {
                 std::cerr << " " << values.at(0) << std::endl;
             } else if (values.size() >= 2 ) {
-                for (auto && value : values) {
+                for (auto&& value : values) {
                     std::cerr << std::endl << "  " << value << std::endl;
                 }
             } else {
@@ -64,8 +66,10 @@ namespace NAC {
             }
         }
         std::cerr << "=== end of headers ===" << std::endl;
+
         std::cerr << "=== parts ===" << std::endl;
-        for (auto &&part : outgoing_request.Parts()) {
+
+        for (auto&& part : outgoing_request.Parts()) {
             std::cerr << "[part]" << std::endl;
             std::string ContentDisposition;
             NHTTP::THeaderParams ContentDispositionParams;
@@ -74,10 +78,12 @@ namespace NAC {
             std::cerr << "  content-length: " << part.ContentLength() << std::endl;
             std::cerr << "  content-disposition: " << ContentDisposition << std::endl;
             std::cerr << "  content-disposition-params: " << std::endl;
-            for (auto[key, value]: ContentDispositionParams) {
+
+            for (auto [key, value]: ContentDispositionParams) {
                 std::cerr << "    key='" << key << "', value='" << value << "'" << std::endl;
             }
-            for (auto[name, value] : part.Headers()) {
+
+            for (auto [name, value] : part.Headers()) {
                 std::cerr << "  [header] " << name << ": " << std::endl;
                 for (auto v : value) {
                     std::cerr << "    " << v << std::endl;
@@ -108,7 +114,7 @@ namespace NAC {
 
                 const auto& service = graph.Services.at(treeIt.first);
 
-                if(!service.SendRawOutputOf.empty() && !request->GetOutGoingRequest().PartByName(service.SendRawOutputOf)) {
+                if (!service.SendRawOutputOf.empty() && !request->GetOutGoingRequest().PartByName(service.SendRawOutputOf)) {
                     // service has 'send_raw_output_of' directive, but needed output is not received yet.
 #ifdef AC_DEBUG_ROUTERD_PROXY
                     std::cerr << "service " << service.Name << " wants raw output of " << service.SendRawOutputOf
@@ -132,27 +138,30 @@ namespace NAC {
                 ) {
                     client->Drop(); // TODO
                     request->NewReply(service.Name);
+                    bool serviceReplyProcessed(false);
 
                     if (response->ContentType() == std::string("multipart/x-ac-routerd")) {
-                        bool haveDirectResponse(false);
 
                         for (const auto& part : response->Parts()) {
                             std::string partName;
                             NStringUtils::Strip(part.ContentDispositionParams().at("filename"), partName, 2, "\"'");
 
                             if (partName == service.Name) {
-                                haveDirectResponse = true;
+                                serviceReplyProcessed = true;
                             }
 
                             ProcessServiceResponse(request, response, partName, &part, /* contentDispositionFormData = */false);
                         }
-
-                        if (!haveDirectResponse) {
-                            ServiceReplied(request, service.Name);
-                        }
-
                     } else {
-                        ProcessServiceResponse(request, response, service.Name, response.get());
+                        if (!service.SaveAs.empty()) {
+                            ProcessServiceResponse(request, response, service.SaveAs, response.get());
+                        } else {
+                            ProcessServiceResponse(request, response, service.Name, response.get());
+                            serviceReplyProcessed = true;
+                        }
+                    }
+                    if (!serviceReplyProcessed) {
+                        ServiceReplied(request, service.Name);
                     }
 
                     Iter(request, args); // recursion depth is limited by graph size, which is small.
@@ -166,20 +175,19 @@ namespace NAC {
                 request->NewRequest(service.Name);
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
-                print_outgoing_request(request);
+                printOutgoingRequest(request);
 #endif
                 // schedule payload to be sent to connected service
                 if (!service.SendRawOutputOf.empty()) {
-                    auto &&outgoing_request = request->GetOutGoingRequest();
-                    auto matching_part = outgoing_request.PartByName(service.SendRawOutputOf);
-                    if (matching_part) {
+                    auto&& outgoingRequest = request->GetOutGoingRequest();
+                    auto matchingPart = outgoingRequest.PartByName(service.SendRawOutputOf);
+                    if (matchingPart) {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "to service " << service.Name
                                   << " will send_raw_output_of " << service.SendRawOutputOf << std::endl;
 #endif
-                        rv->PushWriteQueueData(matching_part->GetBody());
-                    }
-                    else { // should not happen: we've checked it above
+                        rv->PushWriteQueueData(matchingPart->GetBody());
+                    } else { // should not happen: we've checked it above
                         request->Send500();
 #ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "raw output part not found, issuing 500" << std::endl;
@@ -294,12 +302,7 @@ namespace NAC {
         bool contentDispositionFormData
     ) const {
         ServiceReplied(request, serviceName);
-        if (
-            (serviceName == std::string("output")
-             || (Graph.Services.count(serviceName) > 0
-                 && Graph.Services.at(serviceName).SaveAs == std::string("output"))
-            )
-            && !request->IsResponseSent()
+        if (serviceName == std::string("output") && !request->IsResponseSent()
         ) { // TODO
             {
                 NHTTP::TResponse out;
@@ -328,12 +331,7 @@ namespace NAC {
         }
 
         {
-            const std::string part_name = (
-                Graph.Services.count(serviceName) > 0
-                && !(Graph.Services.at(serviceName).SaveAs.empty())
-            ) ? Graph.Services.at(serviceName).SaveAs : serviceName;
-
-            auto part = request->PreparePart(part_name);
+            auto part = request->PreparePart(serviceName);
             part.Wrap(message->ContentLength(), message->Content());
             part.Memorize(response);
             request->AddPart(std::move(part));

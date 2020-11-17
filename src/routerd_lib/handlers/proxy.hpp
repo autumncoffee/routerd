@@ -52,7 +52,7 @@ namespace NAC {
             bool contentDispositionFormData = true
         ) const;
 #ifdef AC_DEBUG_ROUTERD_PROXY
-        void print_outgoing_request(std::shared_ptr<TRouterDRequest> request) const;
+        void printOutgoingRequest(std::shared_ptr<TRouterDRequest> request) const;
 #endif
 
     private:

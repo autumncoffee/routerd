@@ -220,12 +220,14 @@ namespace NAC {
                 std::cerr << "=== service dependency tree ===" << std::endl;
                 for (auto&& [name, service] : compiledGraph.Services) {
                     std::cerr << name << ":" << std::endl;
+
                     if (compiledGraph.Tree[name].size() > 0) {
                         std::cerr << "  it depends on these:" << std::endl;
                         for (auto&& node : compiledGraph.Tree[name]) {
                             std::cerr << "    " << node << std::endl;
                         }
                     }
+
                     if(compiledGraph.ReverseTree[name].size() > 0) {
                         std::cerr << "  these depend on it:" << std::endl;
                         for (auto&& node : compiledGraph.ReverseTree[name]) {
@@ -313,8 +315,7 @@ namespace NAC {
             args.BindPort6 = args.BindPort4 = config["port"].get<unsigned short>();
             args.ThreadCount = ((config.count("threads") > 0) ? config["threads"].get<size_t>() : 10);
             args.ClientArgsFactory = [&router, &requestFactory]() {
-                return new NHTTPServer::TClient::TArgs(
-                        router, std::forward<NHTTPServer::TClient::TArgs::TRequestFactory>(requestFactory));
+                return new NHTTPServer::TClient::TArgs(router, std::forward<NHTTPServer::TClient::TArgs::TRequestFactory>(requestFactory));
             };
 
             NHTTPServer::TServer(args, router).Run();
