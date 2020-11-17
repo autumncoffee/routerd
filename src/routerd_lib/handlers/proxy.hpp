@@ -51,6 +51,7 @@ namespace NAC {
             const NHTTP::TAbstractMessage* part,
             bool contentDispositionFormData = true
         ) const;
+        void print_outgoing_request(std::shared_ptr<TRouterDRequest> request) const;
 
     private:
         const std::unordered_map<std::string, std::vector<TServiceHost>>& Hosts;
