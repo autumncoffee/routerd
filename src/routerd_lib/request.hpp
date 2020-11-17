@@ -7,6 +7,9 @@
 #include "structs.hpp"
 #include <unordered_set>
 #include <chrono>
+#ifdef AC_DEBUG_ROUTERD_PROXY
+#include <iostream>
+#endif
 
 namespace NAC {
     class TRouterDRequest : public NHTTP::TRequest {
@@ -58,10 +61,16 @@ namespace NAC {
         }
 
         void NewReply(const std::string& name) {
+#ifdef AC_DEBUG_ROUTERD_PROXY
+            std::cerr << "NewReply: " << name << std::endl;
+#endif
             InProgress.erase(name);
         }
 
         void NewRequest(const std::string& name) {
+#ifdef AC_DEBUG_ROUTERD_PROXY
+            std::cerr << "NewRequest: " << name << std::endl;
+#endif
             InProgress.insert(name);
         }
 
@@ -71,6 +80,10 @@ namespace NAC {
 
         bool IsInProgress(const std::string& name) const {
             return (InProgress.count(name) > 0);
+        }
+
+        const NHTTP::TResponse& GetOutGoingRequest() {
+            return Out();
         }
 
         const std::chrono::steady_clock::time_point& StartTime() const {
