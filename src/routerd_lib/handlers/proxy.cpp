@@ -110,6 +110,10 @@ namespace NAC {
 
                 if(!service.SendRawOutputOf.empty() && !request->GetOutGoingRequest().PartByName(service.SendRawOutputOf)) {
                     // service has 'send_raw_output_of' directive, but needed output is not received yet.
+#ifdef AC_DEBUG_ROUTERD_PROXY
+                    std::cerr << "service " << service.Name << " wants raw output of " << service.SendRawOutputOf
+                              << ", which is not received yet, will skip" << std::endl;
+#endif
                     continue;
                 }
 
@@ -239,10 +243,11 @@ namespace NAC {
                         std::cerr << "(2) response was NOT sent, issuing 500" << std::endl;
 #endif
                         request->Send500();
-                    }
+                    } else {
 #ifdef AC_DEBUG_ROUTERD_PROXY
-                    std::cerr << "something was sent, which is ok" << std::endl;
+                        std::cerr << "something was sent, which is ok" << std::endl;
 #endif
+                    }
                 }
             }
 
@@ -289,8 +294,13 @@ namespace NAC {
         bool contentDispositionFormData
     ) const {
         ServiceReplied(request, serviceName);
-
-        if ((serviceName == std::string("output")) && !request->IsResponseSent()) { // TODO
+        if (
+            (serviceName == std::string("output")
+             || (Graph.Services.count(serviceName) > 0
+                 && Graph.Services.at(serviceName).SaveAs == std::string("output"))
+            )
+            && !request->IsResponseSent()
+        ) { // TODO
             {
                 NHTTP::TResponse out;
                 out.FirstLine(response->FirstLine() + "\r\n");
@@ -318,8 +328,12 @@ namespace NAC {
         }
 
         {
+            const std::string part_name = (
+                Graph.Services.count(serviceName) > 0
+                && !(Graph.Services.at(serviceName).SaveAs.empty())
+            ) ? Graph.Services.at(serviceName).SaveAs : serviceName;
 
-            auto part = request->PreparePart(serviceName);
+            auto part = request->PreparePart(part_name);
             part.Wrap(message->ContentLength(), message->Content());
             part.Memorize(response);
             request->AddPart(std::move(part));

@@ -125,6 +125,10 @@ namespace NAC {
                         service.SendRawOutputOf = service_["send_raw_output_of"].get<std::string>();
                     }
 
+                    if (service_.count("save_as") > 0) {
+                        service.SaveAs = service_["save_as"].get<std::string>();
+                    }
+
                     if (service_.count("path") > 0 && service_.count("send_raw_output_of") > 0) {
                         std::cerr << graph.first << ": cannot have both 'path' and 'send_raw_output_of' specified "
                                   << "for service " << service.Name << std::endl;
@@ -232,17 +236,17 @@ namespace NAC {
                 std::cerr << "=== end of service dependency tree ===" << std::endl;
 #endif
 
-//                for (auto&& [name, service] : compiledGraph.Services) {
-//                    if (!service.SendRawOutputOf.empty()) {
-//                        if (compiledGraph.Tree.count(name) == 0
-//                            || compiledGraph.Tree[name].count(service.SendRawOutputOf) == 0
-//                        ) {
-//                            std::cerr << name << ": 'send_raw_output_of' = '" << service.SendRawOutputOf << "', "
-//                                      << "but service " << service.SendRawOutputOf << " is not defined as "
-//                                      << "a dependency of service " << name << std::endl;
-//                        }
-//                    }
-//                }
+                for (auto&& [name, service] : compiledGraph.Services) {
+                    if (!service.SendRawOutputOf.empty()) {
+                        if (compiledGraph.Tree.count(name) == 0
+                            || compiledGraph.Tree[name].count(service.SendRawOutputOf) == 0
+                        ) {
+                            std::cerr << name << ": 'send_raw_output_of' = '" << service.SendRawOutputOf << "', "
+                                      << "but service " << service.SendRawOutputOf << " is not defined as "
+                                      << "a dependency of service " << name << std::endl;
+                        }
+                    }
+                }
 
             } else {
                 compiledGraph.Tree = tree;
