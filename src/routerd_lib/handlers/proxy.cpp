@@ -46,6 +46,7 @@ namespace NAC {
         return hosts.front();
     }
 
+#ifdef AC_DEBUG_ROUTERD_PROXY
     void TRouterDProxyHandler::print_outgoing_request(std::shared_ptr<TRouterDRequest> request) const{
         auto &outgoing_request = request->GetOutGoingRequest();
         std::cerr << "== OUTGOING REQUEST == " << std::endl;
@@ -89,6 +90,7 @@ namespace NAC {
         std::cerr << "=== end of parts ===" << std::endl;
         std::cerr << "== END OF OUTGOING REQUEST == " << std::endl;
     }
+#endif
 
     void TRouterDProxyHandler::Iter(std::shared_ptr<TRouterDRequest> request, const std::vector<std::string>& args) const {
         auto&& graph = request->GetGraph();
@@ -175,7 +177,9 @@ namespace NAC {
                     }
                     else { // should not happen: we've checked it above
                         request->Send500();
+#ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "raw output part not found, issuing 500" << std::endl;
+#endif
                         break;
                     }
 
@@ -200,29 +204,45 @@ namespace NAC {
 
             // decide whether to continue loop while(true), exit with 500 (no way to complete request) or exit normally via break.
             if (request->InProgressCount() == 0) { // if we couldn't send any requests
-                std::cerr << "couldn't send any requests" << std::endl;
+#ifdef AC_DEBUG_ROUTERD_PROXY
+               std::cerr << "couldn't send any requests" << std::endl;
+#endif
                 if (somethingHappened) { // but tried to
+#ifdef AC_DEBUG_ROUTERD_PROXY
                     std::cerr << "but tried to" << std::endl;
+#endif
                     if (graph.Tree.empty()) { // and there are no services left
                         if (!request->IsResponseSent()) {
                             request->Send500();
+#ifdef AC_DEBUG_ROUTERD_PROXY
                             std::cerr << "(1) response was NOT sent, issuing 500" << std::endl;
+#endif
                         } else {
+#ifdef AC_DEBUG_ROUTERD_PROXY
                             std::cerr << "response was sent" << std::endl;
+#endif
                         }
 
                     } else { // and still have services to try
+#ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "still have services to try" << std::endl;
+#endif
                         continue;
                     }
 
                 } else { // and won't send any
+#ifdef AC_DEBUG_ROUTERD_PROXY
                     std::cerr << "wont send any" << std::endl;
+#endif
                     if (!request->IsResponseSent()) {
+#ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "(2) response was NOT sent, issuing 500" << std::endl;
+#endif
                         request->Send500();
                     }
+#ifdef AC_DEBUG_ROUTERD_PROXY
                     std::cerr << "something was sent, which is ok" << std::endl;
+#endif
                 }
             }
 
