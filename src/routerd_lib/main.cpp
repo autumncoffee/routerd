@@ -141,10 +141,10 @@ namespace NAC {
                     return 1;
                 }
 
-//                if (compiledGraph.Services.count(service.Name) > 0) {
-//                    std::cerr << graph.first << ": multiple service definitions of the same name: " << service.Name << std::endl;
-//                    return 1;
-//                }
+                if (compiledGraph.Services.count(service.Name) > 0) {
+                    std::cerr << graph.first << ": multiple service definitions of the same name: " << service.Name << std::endl;
+                    return 1;
+                }
 
                 tree.emplace(service.Name, decltype(tree)::mapped_type());
                 compiledGraph.Services.emplace(service.Name, std::move(service));

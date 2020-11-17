@@ -6,7 +6,6 @@
 #include <routerd_lib/utils.hpp>
 #include <routerd_lib/stat.hpp>
 #include <ac-common/utils/string.hpp>
-#include <iostream>
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
 #include <iostream>
@@ -121,23 +120,13 @@ namespace NAC {
                     continue;
                 }
 
-                const auto& service = graph.Services.at(treeIt.first);
-
-                if (!service.SendRawOutputOf.empty() && !request->GetOutGoingRequest().PartByName(service.SendRawOutputOf)) {
-                    // service has 'send_raw_output_of' directive, but needed output is not received yet.
-#ifdef AC_DEBUG_ROUTERD_PROXY
-                    std::cerr << "service " << service.Name << " wants raw output of " << service.SendRawOutputOf
-                              << ", which is not received yet, will skip" << std::endl;
-#endif
-                    continue;
-                }
-
                 somethingHappened = true; // found service ready to be requested
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
                 std::cerr << "graph.Services.at(" << treeIt.first << ");" << std::endl;
 #endif
 
+                const auto& service = graph.Services.at(treeIt.first);
                 const auto& host = GetHost(service.HostsFrom);
 
                 // try to connect (no sending yet), and schedule response behavior in a callback
@@ -196,7 +185,7 @@ namespace NAC {
                                   << " will send_raw_output_of " << service.SendRawOutputOf << std::endl;
 #endif
                         rv->PushWriteQueueData(matchingPart->GetBody());
-                    } else { // should not happen: we've checked it above
+                    } else { // should not happen: we are demanding proper dependencies
                         request->Send500();
 #ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "raw output part not found, issuing 500" << std::endl;
@@ -311,7 +300,7 @@ namespace NAC {
         bool contentDispositionFormData
     ) const {
         ServiceReplied(request, serviceName);
-        if (serviceName == std::string("output") && !request->IsResponseSent()
+        if ((serviceName == std::string("output")) && !request->IsResponseSent()
         ) { // TODO
             {
                 NHTTP::TResponse out;
