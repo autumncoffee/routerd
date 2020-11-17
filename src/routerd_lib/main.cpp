@@ -240,7 +240,8 @@ namespace NAC {
 
                 for (auto&& [name, service] : compiledGraph.Services) {
                     if (!service.SendRawOutputOf.empty()) {
-                        if (compiledGraph.Tree.count(name) == 0
+                        if (
+                            compiledGraph.Tree.count(name) == 0
                             || compiledGraph.Tree[name].count(service.SendRawOutputOf) == 0
                         ) {
                             std::cerr << name << ": service " << name

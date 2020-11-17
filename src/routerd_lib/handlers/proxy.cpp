@@ -6,10 +6,7 @@
 #include <routerd_lib/utils.hpp>
 #include <routerd_lib/stat.hpp>
 #include <ac-common/utils/string.hpp>
-
-#ifdef AC_DEBUG_ROUTERD_PROXY
 #include <iostream>
-#endif
 
 namespace NAC {
     void TRouterDProxyHandler::Handle(
@@ -46,12 +43,12 @@ namespace NAC {
     }
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
-    void TRouterDProxyHandler::printOutgoingRequest(std::shared_ptr<TRouterDRequest> request) const{
-        auto& outgoing_request = request->GetOutGoingRequest();
+    void TRouterDProxyHandler::PrintOutgoingRequest(std::shared_ptr<TRouterDRequest> request) const{
+        auto& outgoingRequest = request->GetOutGoingRequest();
         std::cerr << "== OUTGOING REQUEST == " << std::endl;
         std::cerr << "=== headers ===" << std::endl;
 
-        for (auto&& [header, values] : outgoing_request.Headers()) {
+        for (auto&& [header, values] : outgoingRequest.Headers()) {
             std::cerr << "  " << header << ":";
 
             if (values.size() == 1) {
@@ -70,21 +67,21 @@ namespace NAC {
 
         std::cerr << "=== parts ===" << std::endl;
 
-        for (auto&& part : outgoing_request.Parts()) {
+        for (auto&& part : outgoingRequest.Parts()) {
             std::cerr << "[part]" << std::endl;
-            std::string ContentDisposition;
-            NHTTP::THeaderParams ContentDispositionParams;
+            std::string contentDisposition;
+            NHTTP::THeaderParams contentDispositionParams;
             NHTTPUtils::ParseHeader(
                     part.Headers(),
                     "content-disposition",
-                    ContentDisposition,
-                    ContentDispositionParams
+                    contentDisposition,
+                    contentDispositionParams
             );
             std::cerr << "  content-length: " << part.ContentLength() << std::endl;
-            std::cerr << "  content-disposition: " << ContentDisposition << std::endl;
+            std::cerr << "  content-disposition: " << contentDisposition << std::endl;
             std::cerr << "  content-disposition-params: " << std::endl;
 
-            for (auto [key, value]: ContentDispositionParams) {
+            for (auto [key, value]: contentDispositionParams) {
                 std::cerr << "    key='" << key << "', value='" << value << "'" << std::endl;
             }
 
@@ -173,23 +170,23 @@ namespace NAC {
                 request->NewRequest(service.Name);
 
 #ifdef AC_DEBUG_ROUTERD_PROXY
-                printOutgoingRequest(request);
+                PrintOutgoingRequest(request);
 #endif
                 // schedule payload to be sent to connected service
                 if (!service.SendRawOutputOf.empty()) {
                     auto&& outgoingRequest = request->GetOutGoingRequest();
                     auto matchingPart = outgoingRequest.PartByName(service.SendRawOutputOf);
+
                     if (matchingPart) {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "to service " << service.Name
                                   << " will send_raw_output_of " << service.SendRawOutputOf << std::endl;
 #endif
                         rv->PushWriteQueueData(matchingPart->GetBody());
+
                     } else { // should not happen: we are demanding proper dependencies
                         request->Send500();
-#ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "raw output part not found, issuing 500" << std::endl;
-#endif
                         break;
                     }
 
@@ -249,6 +246,7 @@ namespace NAC {
                         std::cerr << "(2) response was NOT sent, issuing 500" << std::endl;
 #endif
                         request->Send500();
+
                     } else {
 #ifdef AC_DEBUG_ROUTERD_PROXY
                         std::cerr << "something was sent, which is ok" << std::endl;
@@ -300,6 +298,7 @@ namespace NAC {
         bool contentDispositionFormData
     ) const {
         ServiceReplied(request, serviceName);
+
         if ((serviceName == std::string("output")) && !request->IsResponseSent()
         ) { // TODO
             {
