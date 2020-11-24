@@ -52,7 +52,7 @@ namespace NAC {
         const std::string statBind6((config.count("stat_bind6") > 0) ? config["stat_bind6"].get<std::string>() : "");
         std::unordered_map<std::string, std::vector<TServiceHost>> hosts;
 
-        for (const auto& spec : config["hosts"].get<std::unordered_map<std::string, std::vector<std::string>>>()) {
+        for (const auto& spec : config["hosts"].get<std::unordered_map<std::string, std::vector<nlohmann::json>>>()) {
             if (spec.second.empty()) {
                 std::cerr << spec.first << " has no hosts" << std::endl;
                 return 1;
@@ -61,23 +61,34 @@ namespace NAC {
             auto&& hosts_ = hosts[spec.first];
             hosts_.reserve(spec.second.size());
 
-            for (const auto& host : spec.second) {
-                const ssize_t colon(host.rfind(':'));
+            for (const auto& host_ : spec.second) {
+                if (host_.is_string()) {
+                    const auto& host = host_.get<std::string>();
+                    const ssize_t colon(host.rfind(':'));
 
-                if (colon < 0) {
-                    std::cerr << spec.first << ": " << host << " has no port specified" << std::endl;
-                    return 1;
+                    if (colon < 0) {
+                        std::cerr << spec.first << ": " << host << " has no port specified" << std::endl;
+                        return 1;
+                    }
+
+                    std::stringstream ss;
+                    unsigned short port;
+                    ss << host.data() + colon + 1;
+                    ss >> port;
+
+                    hosts_.emplace_back(TServiceHost {
+                        .Addr = std::string(host.data(), colon),
+                        .Port = port,
+                        .SSL = false
+                    });
+
+                } else {
+                    hosts_.emplace_back(TServiceHost {
+                        .Addr = host_["addr"].get<std::string>(),
+                        .Port = host_["port"].get<unsigned short>(),
+                        .SSL = host_["ssl"].get<bool>()
+                    });
                 }
-
-                std::stringstream ss;
-                unsigned short port;
-                ss << host.data() + colon + 1;
-                ss >> port;
-
-                hosts_.emplace_back(TServiceHost {
-                    .Addr = std::string(host.data(), colon),
-                    .Port = port
-                });
             }
         }
 

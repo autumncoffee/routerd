@@ -8,6 +8,7 @@ namespace NAC {
     struct TServiceHost {
         std::string Addr;
         unsigned short Port = 0;
+        bool SSL = false;
     };
 
     struct TService {

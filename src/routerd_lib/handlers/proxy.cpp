@@ -127,7 +127,7 @@ namespace NAC {
                 const auto& host = GetHost(service.HostsFrom);
 
                 // try to connect (no sending yet), and schedule response behavior in a callback
-                auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, [this, request, &service, args](
+                auto rv = request->AwaitHTTP(host.Addr.c_str(), host.Port, host.SSL, [this, request, &service, args](
                     std::shared_ptr<NHTTP::TIncomingResponse> response,
                     std::shared_ptr<NHTTPServer::TClientBase> client
                 ) {
