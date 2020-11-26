@@ -332,7 +332,7 @@ namespace NAC {
 
         {
             auto part = request->PreparePart(serviceName);
-            CopyHeaders(message->Headers(), part, /* contentType = */true, contentDispositionFormData);
+            CopyHeaders(message->Headers(), part, /* contentType = */false, /* contentDispositionFormData = */false);
 
             if (message->ContentLength() > 0) {
                 part.Wrap(message->ContentLength(), message->Content());
