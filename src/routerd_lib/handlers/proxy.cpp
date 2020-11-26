@@ -304,7 +304,11 @@ namespace NAC {
                 NHTTP::TResponse out;
                 out.FirstLine(response->FirstLine() + "\r\n");
                 CopyHeaders(message->Headers(), out, /* contentType = */true, contentDispositionFormData);
-                out.Wrap(message->ContentLength(), message->Content());
+
+                if (message->ContentLength() > 0) {
+                    out.Wrap(message->ContentLength(), message->Content());
+                }
+
                 out.Memorize(response);
 
                 request->Send(out);
@@ -328,7 +332,12 @@ namespace NAC {
 
         {
             auto part = request->PreparePart(serviceName);
-            part.Wrap(message->ContentLength(), message->Content());
+            CopyHeaders(message->Headers(), part, /* contentType = */true, contentDispositionFormData);
+
+            if (message->ContentLength() > 0) {
+                part.Wrap(message->ContentLength(), message->Content());
+            }
+
             part.Memorize(response);
             request->AddPart(std::move(part));
         }
