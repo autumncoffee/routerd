@@ -1,6 +1,6 @@
 { pkgs ? import <nixpkgs> {} }:
 let
-  stdenv = pkgs.overrideCC pkgs.stdenv pkgs.clang_6;
+  stdenv = pkgs.overrideCC pkgs.stdenv pkgs.clang_18;
 in rec {
   enableDebugging = false; #true;
 
@@ -12,7 +12,7 @@ in rec {
     sourceRoot = "src";
     buildInputs = [
       pkgs.cmake
-      pkgs.openssl_1_1
+      pkgs.libressl_3_9
       pkgs.pcre-cpp
       pkgs.gperftools
     ];
